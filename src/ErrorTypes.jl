@@ -67,20 +67,22 @@ If `x` contains a nothing, return that. Else, throw an error with message `s`.
 """
 expect_nothing(x::Option, s::AbstractString) = is_error(x) ? nothing : error(s)
 
+@noinline unwrap_err() = error("unwrap on unexpected type")
+
 """
     unwrap(x::Result)
 
 If `x` is of the associated error type, throw an error. Else, return the contained
 result type.
 """
-unwrap(x::Result) = is_error(x) ? throw(extract(x)) : x
+unwrap(x::Result) = is_error(x) ? unwrap_err() : extract(x)
 
 """
     expect_nothing(x::Option, s::AbstractString)
 
 If `x` contains a nothing, return that. Else, throw an error.
 """
-unwrap_nothing(x::Option) = is_error(x) ? nothing : throw(extract(x))
+unwrap_nothing(x::Option) = is_error(x) ? nothing : unwrap_err()
 
 """
     extract(x::Result{R, E})
@@ -100,15 +102,16 @@ end
 """
     @?(expr)
 
+Propagate a `Result` to the outer function.
 Evaluate `expr`, which should return a `Result`. If it contains an error value,
 return the error value from the outer function. Else, the macro evaluates to
 the result value of `expr`.
 
 # Example
-julia> f() = @?(some(1)) + 1; g() = @?(none(Int)) + 1
+julia> (f(x::Option{T})::Option{T}) where T = Some(@?(x) + one(T))
 
-julia> f(), g()
-(2, nothing)
+julia> f(some(1.0)), f(none(Int))
+(some(2.0), none(Int64))
 """
 macro var"?"(expr)
     sym = gensym()
