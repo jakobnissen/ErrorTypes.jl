@@ -44,7 +44,7 @@ Now, if you forget that `safer_findfirst` can error, and mistakenly assume that 
 Notably, in fully type-stable code, using `ErrorTypes` in this manner carries precisely zero run-time performance penalty.
 
 ## Usage
-__Result__
+### Result
 The main type is a `Result{R, E}`. This wraps a value of *either* an expected "result" type `R` *or* an "error" type `E`, but not both. For example, constructing an `Result{Integer, Int}` throws a (compile time inferred) error, since `1` would be both an `R` and an `E`.
 
 This package allows objects of type `R` or `E` to be `convert`'ed to `Result{R, E}`. The following functions can be used on a `Result`:
@@ -54,7 +54,7 @@ This package allows objects of type `R` or `E` to be `convert`'ed to `Result{R, 
 * `expect(x::Result, message::AbstractString)` throws an error with message `message` if `x` contains an error type, else extracts `x`.
 * `unwrap(x::Result)` is like `expect`, but uses a default error message.
 
-__Option__
+### Option
 The package also contains the type `Option{T}`. This is an alias for `Result{Some{T}, Nothing}`, but has specialized methods to make it simpler to work with. This should be used for functions that can either return a `T`, or not, like the `safer_findfirst` function in the example above. `Option`, being a subtype of `Result`, has all its methods. However, it's "result" type is considered to be `T`, *not* `Some{T}`, i.e. `extract`'ing an `Option{T}` returns a `Union{T, Nothing}`, *not* a `Union{Some{T}, Nothing}`. Similarly, `expect`'ing and `unwrap`'ing etc. an `Option{T}` returns a `T`.
 
 `Option{T}` also have extra methods and associated functions:
@@ -69,7 +69,7 @@ The easiest way to use this package is to annotate the function as returning `Re
 safe_div(num::Integer, den::Integer)::Option{Float64} = iszero(den) ? nothing : Some(num / den)
 ```
 
-__@?__
+### @?
 If you make an entire codebase of functions returning `Result`s, it can get bothersome to constantly check if function calls contain error values and propagate those error values. To make this process easier, use the macro `@?`, which automatically propagates any error values. If this is applied to some expression `x` evaluating to a `Result` containing an error value, this results in `return extract(x)`. If it contains a result value, this results in `extract(x)`.
 
 For example, suppose you want to implement a safe version of the harmonic mean function, which in turn uses a safe version of `inv`:
@@ -103,7 +103,7 @@ function harmonic_mean(v::AbstractArray)::Option{Float64}
 end
 ```
 
-__Notes__
+### Notes
 
 Note that this package does not protect YOUR code from using unsafe functions, it protects everyone else relying on your code. For example:
 
