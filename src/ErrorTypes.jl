@@ -92,7 +92,13 @@ Extract the value of `x`, returning a `Union{R, E}`. If `x` isa `Option{T}`,
 return the internal `Union{T, Nothing}`.
 """
 extract(x::Result) = x.x
-extract(x::Option) = is_error(x) ? nothing : something(x.x)
+
+# This version for Option appears unnecessarily verbose, but its phrasing
+# is necessary to make the compiler realize the `something` call cannot
+# possibly fail
+function extract(x::Result{Some{T}, Nothing}) where T
+    x.x isa Some{T} ? something(x.x) : nothing
+end
 
 """
     @?(expr)
@@ -112,7 +118,7 @@ macro var"?"(expr)
     quote
         $(sym)::Result = $(esc(expr))
         is_error($sym) && return extract($sym)
-        unwrap($sym)
+        extract($sym)
     end
 end
 
