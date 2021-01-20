@@ -41,18 +41,15 @@ some(x::T) where T = Option{T}(Some(x))
 
 Base.convert(::Type{<:Result{R,E}}, x::Union{R, E}) where {R, E} = Result{R,E}(x)
 
-function Base.show(io::IO, x::Option)
+function Base.show(io::IO, x::Option{T}) where T
     if x.x === nothing
-        print(io, "none(", result_type(x), ')')
+        print(io, "none(", T, ')')
     else
         print(io, "some(", something(x.x), ')')
     end
 end
 
-result_type(x::Result{R}) where R = R
-result_type(x::Result{Some{T}, Nothing}) where T = T
-error_type(x::Result{R, E}) where {R, E} = E
-is_error(x::Result) = x.x isa error_type(x)
+is_error(x::Result{R, E}) where {R, E} = x.x isa E
 
 """
     expect(x::Result, s::AbstractString

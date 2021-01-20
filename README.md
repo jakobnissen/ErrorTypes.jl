@@ -97,7 +97,7 @@ In this function, we constantly have to check whether `safe_div` returned the er
 function harmonic_mean(v::AbstractArray)::Option{Float64}
     sm = 0.0
     for i in v
-        sm += @? safe_div(i)
+        sm += @? safe_div(1, i)
     end
     Some(@? safe_div(sm, length(v)))
 end
@@ -109,6 +109,7 @@ Note that this package does not protect YOUR code from using unsafe functions, i
 
 ```julia
 unsafe_func(x::Int) = x == 1 ? nothing : (x == 4 ? missing : x + 1)
+
 function still_unsafe(x::Int)::Option{Int}
     y = unsafe_func(x^2)
     y === nothing ? nothing : Some(y)
