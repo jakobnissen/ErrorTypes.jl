@@ -95,22 +95,22 @@ extract(x::Result) = x.x
 extract(x::Option) = is_error(x) ? nothing : something(x.x)
 
 """
-    @some(expr)
+    @?(expr)
 
 Evaluate `expr`, which should return a `Result`. If it contains an error value,
 return the error value from the outer function. Else, the macro evaluates to
 the result value of `expr`.
 
 # Example
-julia> f() = @some(some(1)) + 1; g() = @some(none(Int)) + 1
+julia> f() = @?(some(1)) + 1; g() = @?(none(Int)) + 1
 
 julia> f(), g()
 (2, nothing)
 """
-macro some(x)
+macro var"?"(expr)
     sym = gensym()
     quote
-        $(sym)::Result = $(esc(x))
+        $(sym)::Result = $(esc(expr))
         is_error($sym) && return extract($sym)
         extract($sym)
     end
@@ -122,6 +122,6 @@ export Result, Option,
     expect, expect_nothing,
     unwrap, unwrap_nothing,
     extract,
-    @some
+    @?
 
 end # module

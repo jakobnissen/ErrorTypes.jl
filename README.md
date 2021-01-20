@@ -69,8 +69,8 @@ The easiest way to use this package is to annotate the function as returning `Re
 safe_div(num::Integer, den::Integer)::Option{Float64} = iszero(den) ? nothing : Some(num / den)
 ```
 
-__@some__
-If you make an entire codebase of functions returning `Result`s, it can get bothersome to constantly check if function calls contain error values and propagate those error values. To make this process easier, use the macro `@some`, which automatically propagates any error values. If this is applied to some expression `x` evaluating to a `Result` containing an error value, this results in `return extract(x)`. If it contains a result value, this results in `extract(x)`.
+__@?__
+If you make an entire codebase of functions returning `Result`s, it can get bothersome to constantly check if function calls contain error values and propagate those error values. To make this process easier, use the macro `@?`, which automatically propagates any error values. If this is applied to some expression `x` evaluating to a `Result` containing an error value, this results in `return extract(x)`. If it contains a result value, this results in `extract(x)`.
 
 For example, suppose you want to implement a safe version of the harmonic mean function, which in turn uses a safe version of `inv`:
 
@@ -97,9 +97,9 @@ In this function, we constantly have to check whether `safe_div` returned the er
 function harmonic_mean(v::AbstractArray)::Option{Float64}
     sm = 0.0
     for i in v
-        sm += @some safe_inv(i)
+        sm += @? safe_div(i)
     end
-    Some(@some safe_div(sm, length(v)))
+    Some(@? safe_div(sm, length(v)))
 end
 ```
 
