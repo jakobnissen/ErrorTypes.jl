@@ -45,7 +45,7 @@ function Base.show(io::IO, x::Option{T}) where T
     if x.x === nothing
         print(io, "none(", T, ')')
     else
-        print(io, "some(", something(x.x), ')')
+        print(io, "some(", repr(something(x.x)), ')')
     end
 end
 
@@ -73,14 +73,14 @@ expect_nothing(x::Option, s::AbstractString) = is_error(x) ? nothing : error(s)
 If `x` is of the associated error type, throw an error. Else, return the contained
 result type.
 """
-unwrap(x::Result) = expect(x, "unwrap of error type")
+unwrap(x::Result) = is_error(x) ? throw(extract(x)) : x
 
 """
     expect_nothing(x::Option, s::AbstractString)
 
 If `x` contains a nothing, return that. Else, throw an error.
 """
-unwrap_nothing(x::Option) = expect_nothing(x, "expected nothing, found something")
+unwrap_nothing(x::Option) = is_error(x) ? nothing : throw(extract(x))
 
 """
     extract(x::Result{R, E})
