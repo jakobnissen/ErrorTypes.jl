@@ -112,7 +112,7 @@ macro var"?"(expr)
     quote
         $(sym)::Result = $(esc(expr))
         is_error($sym) && return extract($sym)
-        extract($sym)
+        unwrap($sym)
     end
 end
 
