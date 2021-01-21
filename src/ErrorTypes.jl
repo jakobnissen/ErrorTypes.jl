@@ -55,8 +55,7 @@ is_error(x::Result{R, E}) where {R, E} = x.x isa E
     expect(x::Result, s::AbstractString
 
 If `x` is of the associated error type, error with message `s`. Else, return
-the contained
-result type.
+the contained result type.
 """
 expect(x::Result, s::AbstractString) = is_error(x) ? error(s) : extract(x)
 
@@ -102,7 +101,7 @@ end
 """
     @?(expr)
 
-Propagate a `Result` to the outer function.
+Propagate a `Result` error value to the outer function.
 Evaluate `expr`, which should return a `Result`. If it contains an error value,
 return the error value from the outer function. Else, the macro evaluates to
 the result value of `expr`.

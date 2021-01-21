@@ -14,7 +14,7 @@ Nice - easy, fast, flexible, relatively generic. You also write a couple of test
 
 ```julia
 @test first_word_bytes("Lorem ipsum") == 5
-@test first_word_bytes(" dolor sit amet") == 4 # leading whitespace
+@test first_word_bytes(" dolor sit amet") == 5 # leading whitespace
 @test first_word_bytes("Rødgrød med fløde") == 9 # unicode
 ```
 All tests pass, and you push to production. But oh no! Your code has a horrible bug that causes your production server to crash! See, you forgot an edge case:
@@ -75,9 +75,9 @@ If you make an entire codebase of functions returning `Result`s, it can get both
 For example, suppose you want to implement a safe version of the harmonic mean function, which in turn uses a safe version of `inv`:
 
 ```julia
-safe_div(a::Real, b::Real)::Option{Float64} = iszero(b) ? nothing : Some(a / b)
+safe_div(a::Integer, b::Integer)::Option{Float64} = iszero(b) ? nothing : Some(a/b)
 
-function harmonic_mean(v::AbstractArray)::Option{Float64}
+function harmonic_mean(v::AbstractArray{<:Integer})::Option{Float64}
     isempty(v) && return nothing
     sm = 0.0
     for i in v
@@ -85,21 +85,21 @@ function harmonic_mean(v::AbstractArray)::Option{Float64}
         is_error(invi) && return nothing
         sm += unwrap(invi)
     end
-    res = safe_div(sm, length(v))
+    res = safe_div(length(v), sm)
     is_error(res) && return nothing
-    return Some(res)
+    return Some(unwrap(res))
 end
 ```
 
 In this function, we constantly have to check whether `safe_div` returned the error value, and return that from the outer function in that case. That can be more concisely written as:
 
 ```julia
-function harmonic_mean(v::AbstractArray)::Option{Float64}
+function harmonic_mean(v::AbstractArray{<:Integer})::Option{Float64}
     sm = 0.0
     for i in v
         sm += @? safe_div(1, i)
     end
-    Some(@? safe_div(sm, length(v)))
+    Some(@? safe_div(length(v), sm))
 end
 ```
 
