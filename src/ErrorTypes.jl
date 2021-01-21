@@ -1,132 +1,172 @@
 module ErrorTypes
 
-"""
-    Result{R, E}
+using SumTypes
 
-An object that can be either a result of type `R` or an error of type `E`,
-but not both.
-"""
-struct Result{R, E}
-    x::Union{R, E}
+@sum_type Result{O, E} begin
+    Ok{O, E}(::O)
+    Err{O, E}(::E)
+end
 
-    function Result{R, E}(x) where {R, E}
-        if typeintersect(R, E) !== Union{}
-            error("result and error type must be disjoint")
-        end
-        new{R, E}(convert(Union{R, E}, x))
-    end
+"""
+    Result{O, E}
+
+A sum type of either `Ok{O}` or `Err{E}`. Used as return value of functions that
+can error with an informative error object of type `E`.
+"""
+Result
+
+@sum_type Option{T} begin
+    Thing{T}(::T)    
+    None{T}()
 end
 
 """
     Option{T}
 
-Alias for `Result{Some{T}, Nothing}`. An object which can either be a T, or not.
-Used to safeguard against unexpected return types from a function
+A sum type of either `Thing{T}` or `None`. Used instead of `Result` as return
+value of functions whose error state need not carry any information.
 """
-const Option{T} = Result{Some{T}, Nothing}
+Option
 
-"""
-    none(::Type{T})
-
-Construct an `Option{Some{T}}(nothing)`, the absence of a value of type `T`.
-"""
-none(::Type{T}) where T = Option{T}(nothing)
-
-"""
-    none(x::T)
-
-Construct a `Option{Some{T}}(Some(T))`, the presence of a value `x`.
-"""
-some(x::T) where T = Option{T}(Some(x))
-
-Base.convert(::Type{<:Result{R,E}}, x::Union{R, E}) where {R, E} = Result{R,E}(x)
-
-function Base.show(io::IO, x::Option{T}) where T
-    if x.x === nothing
-        print(io, "none(", T, ')')
-    else
-        print(io, "some(", repr(something(x.x)), ')')
-    end
+struct ResultConstructor{R,T}
+    x::T
 end
 
-is_error(x::Result{R, E}) where {R, E} = x.x isa E
+"""
+    Ok
+
+The success state of a `Result{O, E}`, carrying an object of type `O`.
+For convenience, `Ok(x)` creates a dummy value that can be converted to the
+appropriate `Result type`.
+"""
+Ok(x) = ResultConstructor{Ok,typeof(x)}(x)
 
 """
-    expect(x::Result, s::AbstractString
+    Err
+
+The error state of a `Result{O, E}`, carrying an object of type `E`.
+For convenience, `Err(x)` creates a dummy value that can be converted to the
+appropriate `Result type`.
+"""
+Err(x) = ResultConstructor{Err,typeof(x)}(x)
+
+Base.convert(::Type{<:Option{T}}, ::Type{None}) where T = None{T}()
+
+function Base.convert(::Type{<:Result{O, E}}, x::ResultConstructor{Ok, O2}
+) where {O, O2 <: O, E}
+    Ok{O, E}(x.x)
+end
+
+function Base.convert(::Type{<:Result{O, E}}, x::ResultConstructor{Err, E2}
+) where {O, E, E2 <: E}
+    Err{O, E}(x.x)
+end
+
+"""
+    Thing(x::T)
+
+Construct a `Thing{T}(x)`, the presence of a value `x`.
+"""
+Thing(x::T) where T = Thing{T}(x)
+
+is_error(x::Result{O, E}) where {O, E} = x.data isa Err{O, E}
+is_none(x::Option{T}) where T = x.data isa None{T}
+
+"""
+    expect(x::Union{Result, Option}, s::AbstractString
 
 If `x` is of the associated error type, error with message `s`. Else, return
 the contained result type.
 """
-expect(x::Result, s::AbstractString) = is_error(x) ? error(s) : extract(x)
+function expect end
+
+function expect(x::Option, s::AbstractString)
+    data = x.data
+    data isa Thing ? data._1 : error(s)
+end
+
+function expect(x::Result, s::AbstractString)
+    data = x.data
+    data isa Ok ? data._1 : error(s)
+end
 
 """
-    expect_nothing(x::Option, s::AbstractString)
+    expect_none(x::Option, s::AbstractString)
 
-If `x` contains a nothing, return that. Else, throw an error with message `s`.
+If `x` contains a None, return nothing. Else, throw an error with message `s`.
 """
-expect_nothing(x::Option, s::AbstractString) = is_error(x) ? nothing : error(s)
+expect_none(x::Option, s::AbstractString) = is_none(x) ? nothing : error(s)
 
 @noinline unwrap_err() = error("unwrap on unexpected type")
 
 """
-    unwrap(x::Result)
+    unwrap(x::Union{Result, Option})
 
 If `x` is of the associated error type, throw an error. Else, return the contained
 result type.
 """
-unwrap(x::Result) = is_error(x) ? unwrap_err() : extract(x)
+function unwrap end
 
-"""
-    expect_nothing(x::Option, s::AbstractString)
-
-If `x` contains a nothing, return that. Else, throw an error.
-"""
-unwrap_nothing(x::Option) = is_error(x) ? nothing : unwrap_err()
-
-"""
-    extract(x::Result{R, E})
-
-Extract the value of `x`, returning a `Union{R, E}`. If `x` isa `Option{T}`,
-return the internal `Union{T, Nothing}`.
-"""
-extract(x::Result) = x.x
-
-# This version for Option appears unnecessarily verbose, but its phrasing
-# is necessary to make the compiler realize the `something` call cannot
-# possibly fail
-function extract(x::Result{Some{T}, Nothing}) where T
-    x.x isa Some{T} ? something(x.x) : nothing
+function unwrap(x::Result)
+    data = x.data
+    data isa Ok ? data._1 : unwrap_err()
 end
+
+function unwrap(x::Option)
+    data = x.data
+    data isa Thing ? data._1 : unwrap_err()
+end
+
+
+"""
+    unwrap_none(x::Option, s::AbstractString)
+
+If `x` contains a None, return nothing. Else, throw an error.
+"""
+unwrap_none(x::Option) = is_none(x) ? nothing : unwrap_err()
 
 """
     @?(expr)
 
-Propagate a `Result` error value to the outer function.
-Evaluate `expr`, which should return a `Result`. If it contains an error value,
-return the error value from the outer function. Else, the macro evaluates to
-the result value of `expr`.
+Propagate a `Result` or `Option` error value to the outer function.
+Evaluate `expr`, which should return a `Result` or `Option`. If it contains
+an error value, return the error value from the outer function. Else, the macro
+evaluates to the result value of `expr`.
 
 # Example
-julia> (f(x::Option{T})::Option{T}) where T = Some(@?(x) + one(T))
+julia> (f(x::Option{T})::Option{T}) where T = Thing(@?(x) + one(T))
 
-julia> f(some(1.0)), f(none(Int))
-(some(2.0), none(Int64))
+julia> f(Thing(1.0)), f(None{Int}())
+(Option{Float64}: Thing(2.0), Option{Int64}: None())
 """
 macro var"?"(expr)
     sym = gensym()
     quote
-        $(sym)::Result = $(esc(expr))
-        is_error($sym) && return extract($sym)
-        extract($sym)
+        $(sym)::Union{Result, Option} = $(esc(expr))
+        if $sym isa Option
+            if ($sym).data isa Thing
+                ($sym).data._1
+            # Here, we propagate None without any type params, such that
+            # a function can propagate a None{A} to a function expecting
+            # a None{B}.
+            else
+                return None
+            end
+        else
+            if ($sym).data isa Ok
+                ($sym).data._1
+            else
+                return $sym
+            end
+        end
     end
 end
 
 export Result, Option,
-    some, none,
-    is_error,
-    expect, expect_nothing,
-    unwrap, unwrap_nothing,
-    extract,
+    Thing, None, Ok, Err,
+    is_error, is_none,
+    expect, expect_none,
+    unwrap, unwrap_none,
     @?
 
 end # module

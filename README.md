@@ -33,7 +33,7 @@ using ErrorTypes
 
 function safer_findfirst(f, x)::Option{eltype(keys(x))}
     for (k, v) in pairs(x)
-        f(v) && return Some(k)
+        f(v) && return Thing(k)
     end
     nothing
 end
@@ -44,50 +44,63 @@ Now, if you forget that `safer_findfirst` can error, and mistakenly assume that 
 Notably, in fully type-stable code, using `ErrorTypes` in this manner carries precisely zero run-time performance penalty.
 
 ## Usage
-### Result
-The main type is a `Result{R, E}`. This wraps a value of *either* an expected "result" type `R` *or* an "error" type `E`, but not both. For example, constructing an `Result{Integer, Int}` throws a (compile time inferred) error, since `1` would be both an `R` and an `E`.
 
-This package allows objects of type `R` or `E` to be `convert`'ed to `Result{R, E}`. The following functions can be used on a `Result`:
+When making a function safer, you should __always__ explicitly type assert its return value as either `Result{O, E}` or `Option{T}`, with all parameters specified.
 
-* `extract(x::Result)` returns the `Union{R,E}` content of the `Result`.
-* `is_error(x::Result)` returns `true` if `x` wraps a value of type `E`, `false` otherwise.
-* `expect(x::Result, message::AbstractString)` throws an error with message `message` if `x` contains an error type, else extracts `x`.
-* `unwrap(x::Result)` is like `expect`, but uses a default error message.
+Functions that can error, but whose error state does not need to carry information may be marked with `Option{T}`. A successful result `x` of type `T` should be returned as `Thing(x)`, and an unsuccessful attempt should be returned as `None` (technically, `None` is a unionall type, but will be converted to the appropriate instance due to the type assert.)
 
-### Option
-The package also contains the type `Option{T}`. This is an alias for `Result{Some{T}, Nothing}`, but has specialized methods to make it simpler to work with. This should be used for functions that can either return a `T`, or not, like the `safer_findfirst` function in the example above. `Option`, being a subtype of `Result`, has all its methods. However, it's "result" type is considered to be `T`, *not* `Some{T}`, i.e. `extract`'ing an `Option{T}` returns a `Union{T, Nothing}`, *not* a `Union{Some{T}, Nothing}`. Similarly, `expect`'ing and `unwrap`'ing etc. an `Option{T}` returns a `T`.
-
-`Option{T}` also have extra methods and associated functions:
-
-* `some(x)` retuns a `Option{Some{typeof(x)}}(Some(x))`, i.e. it's an `Option` with the value `x` present.
-* `none(T)` returns a `Option{Some{T}}(nothing)`, i.e. an `Option` with the absence of a `T`.
-* `expect_nothing(x::Option, message::AbstractString)` throws an error with message `message` if `x` contains a value, otherwise returns `nothing`.
-* `unwrap_nothing(x::Option)` is similar to `expect_nothing`, but throws a default error message.
-
-The easiest way to use this package is to annotate the function as returning `Result` or `Option`:
 ```julia
-safe_div(num::Integer, den::Integer)::Option{Float64} = iszero(den) ? nothing : Some(num / den)
+function safe_trunc(::Type{UInt8}, x::UInt)::Option{UInt8}
+    x > 255 && return None
+    return Thing(x % UInt8)
+end
 ```
 
-### @?
-If you make an entire codebase of functions returning `Result`s, it can get bothersome to constantly check if function calls contain error values and propagate those error values. To make this process easier, use the macro `@?`, which automatically propagates any error values. If this is applied to some expression `x` evaluating to a `Result` containing an error value, this results in `return extract(x)`. If it contains a result value, this results in `extract(x)`.
-
-For example, suppose you want to implement a safe version of the harmonic mean function, which in turn uses a safe version of `inv`:
+Functions that can error, and whose error must carry some information should instead use `Result{O, E}`. The `Ok` state is of type `O`, and the `Err` state of type `E`. A successful return value should return `Ok(x)`, an unsuccessful should return `Err(x)`. By itself, `Ok(x)` and `Err(x)` will return a dummy value that is converted to the correct type due to the typeassert.
 
 ```julia
-safe_div(a::Integer, b::Integer)::Option{Float64} = iszero(b) ? nothing : Some(a/b)
+function safe_trunc(::Type{UInt8}, x::Int)::Result{UInt8, InexactError}
+    if (x > 255) | (x < 0)
+        return Err(InexactError(:safe_trunc, UInt8, x))
+    end
+    return Ok(x % UInt8)
+end
+```
+
+### Methods with Option and Result
+The "error value" of an `Option{T}` and a `Result{O, E}` is a `None{T}` and `Err{O, E}(::E)`, respectively. The "result value" is a `Thing{T}(::T)` and a `Ok{O, E}(::O)`.
+
+__Both__
+* `unwrap(x::Union{Option, Result}`: throw an error if `x` contains an error value. Else, return the result value.
+* `expect(x::Union{Option, Result}, s::AbstractString)`: same as `unwrap`, but errors with the custom string `s`.
+
+
+__Option__
+* `is_none(x::Option)`: Returns whether `x` contains a `None`.
+* `unwrap_none(x::Option)`: Errors if the `Option` contains a result value, else returns `nothing`
+* `expect_none(x::Option, s::AbstractString)` same as `unwrap_none`, but errors with the custom string `s`.
+
+__Result__
+* `is_error(x::Result)`: Returns whether `x` contains an error value.
+
+### @?
+If you make an entire codebase of functions returning `Result`s and `Options`, it can get bothersome to constantly check if function calls contain error values and propagate those error values. To make this process easier, use the macro `@?`, which automatically propagates any error values. If this is applied to some expression `x` evaluating to a `Result` or `Option` containing an error value, this returns the error value. If it contains a result value, the macro is evaluated to the content of the result value.
+
+For example, suppose you want to implement a safe version of the harmonic mean function, which in turn uses a safe version of `div`:
+
+```julia
+safe_div(a::Integer, b::Integer)::Option{Float64} = iszero(b) ? None : Thing(a/b)
 
 function harmonic_mean(v::AbstractArray{<:Integer})::Option{Float64}
-    isempty(v) && return nothing
     sm = 0.0
     for i in v
         invi = safe_div(1, i)
-        is_error(invi) && return nothing
+        is_none(invi) && return None
         sm += unwrap(invi)
     end
     res = safe_div(length(v), sm)
-    is_error(res) && return nothing
-    return Some(unwrap(res))
+    is_none(res) && return None
+    return Thing(unwrap(res))
 end
 ```
 
@@ -99,7 +112,7 @@ function harmonic_mean(v::AbstractArray{<:Integer})::Option{Float64}
     for i in v
         sm += @? safe_div(1, i)
     end
-    Some(@? safe_div(length(v), sm))
+    Thing(@? safe_div(length(v), sm))
 end
 ```
 
@@ -112,12 +125,17 @@ unsafe_func(x::Int) = x == 1 ? nothing : (x == 4 ? missing : x + 1)
 
 function still_unsafe(x::Int)::Option{Int}
     y = unsafe_func(x^2)
-    y === nothing ? nothing : Some(y)
+    y === nothing ? None : Thing(y)
 end
 ```
 
 Here, you've forgotten the egde case `unsafe_func(4)`, so `still_unsafe` will error in that case. To correctly "contain" the unsafety of `unsafe_func`, you need to cover all three return types: `Int`, `Nothing` and `Missing`:
 
 ```julia
-safe_func(x::Int)::Result{Int, Union{Missing, Nothing}} = unsafe_func(x^2)
+function safe_func(x::Int)::Result{Int, Union{Missing, Nothing}}
+    y = unsafe_func(x^2)
+    y === nothing && return Err(nothing)
+    y === missing && return Err(missing)
+    Ok(y)
+end
 ```
