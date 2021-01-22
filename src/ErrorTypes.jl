@@ -50,7 +50,6 @@ appropriate `Result type`.
 """
 Err(x) = ResultConstructor{Err,typeof(x)}(x)
 
-Base.convert(::Type{<:Option{T}}, ::Type{None}) where T = None{T}()
 
 function Base.convert(::Type{<:Result{O, E}}, x::ResultConstructor{Ok, O2}
 ) where {O, O2 <: O, E}
@@ -63,9 +62,23 @@ function Base.convert(::Type{<:Result{O, E}}, x::ResultConstructor{Err, E2}
 end
 
 """
+    None{T}
+
+The variant of `Option` signifying absence of a value of type `T`. The singleton
+`none` is the instance of `None{Nothing}` (NOT an `Option`), and can be freely
+converted to any option value containing a `None`.
+"""
+None
+
+const none = None{Nothing}().data
+Base.:(==)(::None{A}, ::None{B}) where {A, B} = true
+Base.convert(::Type{<:Option{T}}, ::None{Nothing}) where T = None{T}()
+
+"""
     Thing(x::T)
 
-Construct a `Thing{T}(x)`, the presence of a value `x`.
+Construct a `Thing{T}(x)`, variant of `Option` signifying the presence of a
+value `x`.
 """
 Thing(x::T) where T = Thing{T}(x)
 
@@ -146,11 +159,8 @@ macro var"?"(expr)
         if $sym isa Option
             if ($sym).data isa Thing
                 ($sym).data._1
-            # Here, we propagate None without any type params, such that
-            # a function can propagate a None{A} to a function expecting
-            # a None{B}.
             else
-                return None
+                return none
             end
         else
             if ($sym).data isa Ok
@@ -163,7 +173,7 @@ macro var"?"(expr)
 end
 
 export Result, Option,
-    Thing, None, Ok, Err,
+    Thing, none, Ok, Err,
     is_error, is_none,
     expect, expect_none,
     unwrap, unwrap_none,

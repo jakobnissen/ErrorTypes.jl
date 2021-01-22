@@ -33,9 +33,9 @@ using ErrorTypes
 
 function safer_findfirst(f, x)::Option{eltype(keys(x))}
     for (k, v) in pairs(x)
-        f(v) && return Thing(k)
+        f(v) && return Thing(k) # thing: value
     end
-    nothing
+    none # none: absence of value
 end
 ```
 
@@ -46,12 +46,11 @@ Notably, in fully type-stable code, using `ErrorTypes` in this manner carries pr
 ## Usage
 
 When making a function safer, you should __always__ explicitly type assert its return value as either `Result{O, E}` or `Option{T}`, with all parameters specified.
-
-Functions that can error, but whose error state does not need to carry information may be marked with `Option{T}`. A successful result `x` of type `T` should be returned as `Thing(x)`, and an unsuccessful attempt should be returned as `None` (technically, `None` is a unionall type, but will be converted to the appropriate instance due to the type assert.)
+Functions that can error, but whose error state does not need to carry information may be marked with `Option{T}`. A successful result `x` of type `T` should be returned as `Thing(x)`, and an unsuccessful attempt should be returned as `none`. `none` is the singleton instance of `None{T}`, and is used as a stand-in for all values of `None{T}` for all T.
 
 ```julia
 function safe_trunc(::Type{UInt8}, x::UInt)::Option{UInt8}
-    x > 255 && return None
+    x > 255 && return none
     return Thing(x % UInt8)
 end
 ```
@@ -89,17 +88,17 @@ If you make an entire codebase of functions returning `Result`s and `Options`, i
 For example, suppose you want to implement a safe version of the harmonic mean function, which in turn uses a safe version of `div`:
 
 ```julia
-safe_div(a::Integer, b::Integer)::Option{Float64} = iszero(b) ? None : Thing(a/b)
+safe_div(a::Integer, b::Float64)::Option{Float64} = iszero(b) ? none : Thing(a/b)
 
 function harmonic_mean(v::AbstractArray{<:Integer})::Option{Float64}
     sm = 0.0
     for i in v
         invi = safe_div(1, i)
-        is_none(invi) && return None
+        is_none(invi) && return none
         sm += unwrap(invi)
     end
     res = safe_div(length(v), sm)
-    is_none(res) && return None
+    is_none(res) && return none
     return Thing(unwrap(res))
 end
 ```
@@ -125,7 +124,7 @@ unsafe_func(x::Int) = x == 1 ? nothing : (x == 4 ? missing : x + 1)
 
 function still_unsafe(x::Int)::Option{Int}
     y = unsafe_func(x^2)
-    y === nothing ? None : Thing(y)
+    y === nothing ? none : Thing(y)
 end
 ```
 
