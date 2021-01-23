@@ -51,14 +51,43 @@ appropriate `Result type`.
 Err(x) = ResultConstructor{Err,typeof(x)}(x)
 
 
-function Base.convert(::Type{<:Result{O, E}}, x::ResultConstructor{Ok, O2}
+function Base.convert(::Type{Result{O, E}}, x::ResultConstructor{Ok, O2}
 ) where {O, O2 <: O, E}
     Ok{O, E}(x.x)
 end
 
-function Base.convert(::Type{<:Result{O, E}}, x::ResultConstructor{Err, E2}
+function Base.convert(::Type{Result{O, E}}, x::ResultConstructor{Err, E2}
 ) where {O, E, E2 <: E}
     Err{O, E}(x.x)
+end
+
+# Convert an error to another error if the former is a subtype of the other
+function Base.convert(::Type{Result{O1, E1}}, x::Result{O2, E2}
+) where {O1, E1, O2 <: O1, E2 <: E1}
+    Err{O1, E1}(x.data._1)
+end
+
+# Convert Result value that contains an Err, even if the Ok parameter
+# doesn't match, e.g. Err{Int, Float32} -> Err{String, AbstractFloat}
+function Base.convert(::Type{Result{O1, E1}}, x::Result{O2, E2}
+) where {O1, O2, E1, E2 <: E1}
+    data = x.data
+    if data isa Err
+        return Err{O1, E1}(data._1)
+    else
+        error("cannot convert Ok value")
+    end
+end
+
+# Same as above, but for Ok.
+function Base.convert(::Type{Result{O1, E1}}, x::Result{O2, E2}
+) where {O1, E1, E2, O2 <: O1}
+    data = x.data
+    if data isa Ok
+        return Ok{O1, E1}(data._1)
+    else
+        error("cannot convert Err value")
+    end
 end
 
 """
@@ -66,12 +95,11 @@ end
 
 The variant of `Option` signifying absence of a value of type `T`. The singleton
 `none` is the instance of `None{Nothing}` (NOT an `Option`), and can be freely
-converted to any option value containing a `None`.
+converted to any `Option` value containing a `None`.
 """
 None
 
 const none = None{Nothing}().data
-Base.:(==)(::None{A}, ::None{B}) where {A, B} = true
 Base.convert(::Type{<:Option{T}}, ::None{Nothing}) where T = None{T}()
 
 """

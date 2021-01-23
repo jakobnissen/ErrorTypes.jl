@@ -46,7 +46,7 @@ Notably, in fully type-stable code, using `ErrorTypes` in this manner carries pr
 ## Usage
 
 When making a function safer, you should __always__ explicitly type assert its return value as either `Result{O, E}` or `Option{T}`, with all parameters specified.
-Functions that can error, but whose error state does not need to carry information may be marked with `Option{T}`. A successful result `x` of type `T` should be returned as `Thing(x)`, and an unsuccessful attempt should be returned as `none`. `none` is the singleton instance of `None{T}`, and is used as a stand-in for all values of `None{T}` for all T.
+Functions that can error, but whose error state does not need to carry information may be marked with `Option{T}`. A successful result `x` of type `T` should be returned as `Thing(x)`, and an unsuccessful attempt should be returned as `none`. `none` is the singleton instance of `None{Nothing}`, and is used as a stand-in for all values of none-valued `Option`s.
 
 ```julia
 function safe_trunc(::Type{UInt8}, x::UInt)::Option{UInt8}
