@@ -66,11 +66,16 @@ end
     @test convert(Result{Union{Int, UInt}, Int}, Ok(15)) isa Result{Union{Int, UInt}, Int}
     @test convert(Result{Union{String, Int}, Int}, Ok("foo")).data isa Ok{Union{String, Int}, Int}
 
+    # convert a result directly to another if all the subtypes match
+    @test convert(Result{Integer, AbstractString}, Err{Int, String}("boo")) isa Result{Integer, AbstractString}
+    @test_throws MethodError convert(Result{Dict, Array}, Ok{Int, Bool}(1))
+
     # convert Result values with differing params. It works if the param of
     # the variant is conveted to a supertype.
     @test convert(Result{Integer, String}, Ok{Int32, Bool}(Int32(1))) isa Result{Integer, String}
     @test convert(Result{Bool, Signed}, Err{String, Int}(15)) isa Result{Bool, Signed}
     @test_throws ErrorException convert(Result{Dict, Integer}, Ok{Bool, Int}(true))
+    @test_throws ErrorException convert(Result{Signed, String}, Err{Int, AbstractArray}([]))
 
     @test_throws MethodError convert(Result{Int, String}, Ok("foo"))
     @test_throws MethodError convert(Result{Int, Int}, Err("foo"))
