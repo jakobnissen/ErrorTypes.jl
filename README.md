@@ -3,7 +3,7 @@
 ErrorTypes is a simple implementation of Rust-like error handling in Julia. Its goal is to increase safety of Julia code internally in packages by providing easy-to-use, zero-cost handling for recoverable errors.
 
 ## Motivation
-You're building an important pacakge that includes some text processing. At some point, you need a function that gets the length of the first word (in bytes) of some text. So, you write up the following:
+You're building an important package that includes some text processing. At some point, you need a function that gets the length of the first word (in bytes) of some text. So, you write up the following:
 
 ```julia
 function first_word_bytes(s::Union{String, SubString{String}})
@@ -15,7 +15,7 @@ Nice - easy, fast, flexible, relatively generic. You also write a couple of test
 ```julia
 @test first_word_bytes("Lorem ipsum") == 5
 @test first_word_bytes(" dolor sit amet") == 5 # leading whitespace
-@test first_word_bytes("Rødgrød med fløde") == 9 # unicode
+@test first_word_bytes("Rødgrød med fløde") == 9 # Unicode
 ```
 All tests pass, and you push to production. But oh no! Your code has a horrible bug that causes your production server to crash! See, you forgot an edge case:
 
@@ -70,7 +70,7 @@ end
 The "error value" of an `Option{T}` and a `Result{O, E}` is a `None{T}` and `Err{O, E}(::E)`, respectively. The "result value" is a `Thing{T}(::T)` and a `Ok{O, E}(::O)`.
 
 __Both__
-* `unwrap(x::Union{Option, Result}`: throw an error if `x` contains an error value. Else, return the result value.
+* `unwrap(x::Union{Option, Result}`: throws an error if `x` contains an error value. Else, return the result value.
 * `expect(x::Union{Option, Result}, s::AbstractString)`: same as `unwrap`, but errors with the custom string `s`.
 
 
