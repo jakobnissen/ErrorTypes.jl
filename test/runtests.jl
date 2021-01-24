@@ -8,12 +8,18 @@ using Test
     @test !(None{Float32}() isa Option{AbstractFloat})
     @test !(None{Int}() isa None)
 
-    # Conversion
+    # Conversion from none
     @test convert(Option{Int}, none) isa Option{Int}
     @test convert(Option{Some{Nothing}}, none) isa Option{Some{Nothing}}
-    
     @test_throws MethodError convert(Int, none)
     @test_throws MethodError convert(Option{String}, "foo")
+
+    # Convert from Option
+    @test convert(Option{Integer}, Thing(1)) isa Option{Integer}
+    @test convert(Option{Union{String, Dict}}, Thing("foo")) isa Option{Union{String, Dict}}
+    @test convert(Option{String}, None{Int}()) isa Option{String}
+    @test convert(Option{Float64}, None{Float64}()) isa Option{Float64}
+    @test_throws ErrorException convert(Option{String}, Thing(1))
 
     # is_none
     @test is_none(None{Int}())

@@ -1,3 +1,12 @@
+# Note: This module is full of code like:
+# if x.data isa Thing
+#     x.data._1
+# else
+#
+# this is so the compiler won't typecheck inside the if blocks.
+# that in turns leads to more effective code.
+
+
 module ErrorTypes
 
 using SumTypes
@@ -101,6 +110,24 @@ None
 
 const none = None{Nothing}().data
 Base.convert(::Type{<:Option{T}}, ::None{Nothing}) where T = None{T}()
+
+function Base.convert(::Type{Option{T1}}, x::Option{T2}) where {T1, T2 <: T1}
+    data = x.data
+    if data isa Thing
+        Thing{T1}(data._1)
+    else
+        None{T1}()
+    end
+end
+
+function Base.convert(::Type{Option{T1}}, x::Option{T2}) where {T1, T2}
+    data = x.data
+    if data isa None
+        return None{T1}()
+    else
+        error("cannot convert Thing value")
+    end
+end
 
 """
     Thing(x::T)
