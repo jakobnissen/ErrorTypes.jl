@@ -185,6 +185,19 @@ function unwrap(x::Option)
     data isa Thing ? data._1 : unwrap_err()
 end
 
+function getinner(x::Result)
+    data = x.data
+    if data isa Ok
+        return data._1
+    elseif data isa Err
+        return data._1
+    end
+end
+
+getinner(x::Option) = (data = x.data; data isa Thing ? data._1 : nothing)
+
+is_error_value(x::Result) = is_error(x)
+is_error_value(x::Option) = is_none(x)
 
 """
     unwrap_none(x::Option, s::AbstractString)
@@ -210,7 +223,10 @@ julia> f(Thing(1.0)), f(None{Int}())
 macro var"?"(expr)
     sym = gensym()
     quote
-        $(sym)::Union{Result, Option} = $(esc(expr))
+        $(sym) = $(esc(expr))
+        if !isa($sym, Union{Result, Option})
+            throw(TypeError(var"@?", "", Union{Result, Option}, $sym))
+        end
         if $sym isa Option
             if ($sym).data isa Thing
                 ($sym).data._1
@@ -227,11 +243,47 @@ macro var"?"(expr)
     end
 end
 
+"""
+    @unwrap_or(exec, expr)
+
+Evaluate `expr` to a `Result` or `Option`. If `expr` is a error value, evaluate
+`exec` and return that. Else, return the wrapped value in `expr`.
+
+# Examples
+```
+julia> safe_inv(x::Int)::Option{Float64} = iszero(x) ? none : Thing(1/x);
+
+julia> function skip_inv_sum(it)
+    sum = 0.0
+    for i in it
+        sum += @unwrap_or (continue) safe_inv(i)
+    end
+    sum
+end;
+
+julia> skip_inv_sum([2,1,0,1,2])
+3.0
+"""
+macro unwrap_or(exec, expr)
+    sym = gensym()
+    quote
+        $(sym) = $(esc(expr))
+        if !isa($sym, Union{Result, Option})
+            throw(TypeError(:unwrap_or, "", Union{Result, Option}, $sym))
+        end
+        if is_error_value($sym)
+            $exec
+        else
+            getinner($sym)
+        end
+    end
+end
+
 export Result, Option,
     Thing, none, Ok, Err,
     is_error, is_none,
     expect, expect_none,
     unwrap, unwrap_none,
-    @?
+    @?, @unwrap_or
 
 end # module

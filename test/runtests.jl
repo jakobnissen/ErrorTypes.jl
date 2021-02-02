@@ -141,3 +141,26 @@ end
     @test !is_error(testf4(3))
     @test unwrap(testf4(5)) === 6.5
 end
+
+@testset "@unwrap_or" begin
+    not_zero(x::Int)::Option{Int} = iszero(x) ? none : Thing(1 + x)
+
+    function my_sum(f, it)
+        sum = 0
+        for i in it
+            sum += @unwrap_or (continue) f(i)
+        end
+        sum
+    end
+
+    @test my_sum(not_zero, [1,2,0,3,0,1]) == 11
+
+    function not_zero_two(x::Int)::Result{Float64, String}
+        iszero(x) && return Err("Zero")
+        isnan(x) && return Err("NaN")
+        Ok(1 / x)
+    end
+
+    @test my_sum(not_zero_two, [1,2,0,2,0,1]) === 3.0
+end 
+    
