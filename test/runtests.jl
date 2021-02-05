@@ -35,6 +35,12 @@ using Test
     @test_throws ErrorException unwrap(None{Int}())
     @test_throws ErrorException unwrap(convert(Option{AbstractArray}, none))
 
+    # unwrap_or
+    @test unwrap_or(Thing(3.3), 11) === 3.3
+    @test unwrap_or(Thing(missing), nothing) === missing
+    @test unwrap_or(Thing(nothing), 1) === nothing
+    @test unwrap_or(None{Int}(), 5) === 5
+
     # expect
     @test expect(Thing("hello"), "err") === "hello"
     @test expect(Thing([0x01, 0x02]), "foo") == [0x01, 0x02]
@@ -54,6 +60,12 @@ using Test
     @test expect_none(convert(Option{Set}, none), "isset") === nothing
     @test_throws ErrorException expect_none(Thing("hello"), "")
     @test_throws ErrorException expect_none(Thing(Bool[]), "bar")
+
+    # and_then
+    @test and_then(x -> x + 1, Thing(0.0)) === Thing(1.0)
+    @test and_then(x -> abs(x), Thing(-55)) === Thing(55)
+    @test and_then(x -> x + 1, None{String}()) === None{String}()
+    @test and_then(x -> "foo", None{Int}()) === None{Int}()
 end
 
 @testset "Result" begin
@@ -99,12 +111,23 @@ end
     @test unwrap(convert(Result{Dict, Dict}, Ok(Dict(1=>5)))) == Dict(1=>5)
     @test_throws ErrorException unwrap(Err{Int, String}("foo"))
     @test_throws ErrorException unwrap(Err{Bool, Bool}(true))
+
+    @test unwrap_or(Ok{Int, Float64}(5), 11) === 5
+    @test unwrap_or(Ok{Nothing, Nothing}(nothing), 1) === nothing
+    @test unwrap_or(Err{String, Dict}(Dict()), "hello") == "hello"
+    @test unwrap_or(Err{Int, Int}(1), 1 + 1) === 2
     
     # expect
     @test expect(Ok{Nothing, Int}(nothing), "foo") === nothing
     @test expect(convert(Result{Int,Int}, Ok(17)), " ") === 17
     @test_throws ErrorException expect(Err{Int, UInt}(UInt(11)), "bar")
     @test_throws ErrorException expect(Err{Bool, Bool}(true), "foo")
+
+    # and_then
+    @test and_then(x -> x + 1, Ok{Float64, String}(5.0)) === Ok{Float64, String}(6.0)
+    @test and_then(x -> abs(x), Ok{Int, Dict}(-55)) === Ok{Int, Dict}(55)
+    @test and_then(x -> x + 1, Err{String, Int}(1)) === Err{String, Int}(1)
+    @test and_then(x -> "foo", Err{Int, Int}(1)) === Err{Int, Int}(1)
 end
 
 @testset "@?" begin
@@ -140,6 +163,8 @@ end
     @test is_error(testf4(1))
     @test !is_error(testf4(3))
     @test unwrap(testf4(5)) === 6.5
+
+    @test_throws TypeError @? 1 + 1
 end
 
 @testset "@unwrap_or" begin
@@ -148,7 +173,7 @@ end
     function my_sum(f, it)
         sum = 0
         for i in it
-            sum += @unwrap_or (continue) f(i)
+            sum += @unwrap_or f(i) continue
         end
         sum
     end
@@ -162,5 +187,7 @@ end
     end
 
     @test my_sum(not_zero_two, [1,2,0,2,0,1]) === 3.0
+
+    @test_throws TypeError @unwrap_or (1 + 1) "foo"
 end 
     
