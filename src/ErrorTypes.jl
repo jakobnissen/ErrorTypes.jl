@@ -72,7 +72,11 @@ end
 # Convert an error to another error if the former is a subtype of the other
 function Base.convert(::Type{Result{O1, E1}}, x::Result{O2, E2}
 ) where {O1, E1, O2 <: O1, E2 <: E1}
-    Err{O1, E1}(x.data._1)
+    if x.data isa Err
+        Err{O1, E1}(x.data._1)
+    else
+        Ok{O1, E1}(x.data._1)
+    end
 end
 
 # Convert Result value that contains an Err, even if the Ok parameter

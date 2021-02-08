@@ -86,6 +86,7 @@ end
 
     # convert a result directly to another if all the subtypes match
     @test convert(Result{Integer, AbstractString}, Err{Int, String}("boo")) isa Result{Integer, AbstractString}
+    @test convert(Result{Signed, String}, Ok{Int32, String}(Int32(9))) isa Result{Signed, String}
     @test_throws MethodError convert(Result{Dict, Array}, Ok{Int, Bool}(1))
 
     # convert Result values with differing params. It works if the param of
