@@ -193,20 +193,6 @@ function unwrap(x::Option)
     data isa Thing ? data._1 : unwrap_err()
 end
 
-function getinner(x::Result)
-    data = x.data
-    if data isa Ok
-        return data._1
-    elseif data isa Err
-        return data._1
-    end
-end
-
-getinner(x::Option) = (data = x.data; data isa Thing ? data._1 : nothing)
-
-is_error_value(x::Result) = is_error(x)
-is_error_value(x::Option) = is_none(x)
-
 """
     unwrap_none(x::Option, s::AbstractString)
 
@@ -341,9 +327,7 @@ julia> flatten(Thing(ErrorTypes.None{Int}()))
 Option{Int64}: ErrorTypes.None()
 ```
 """
-function flatten(x::Option{Option{T}}) where T
-    @unwrap_or x None{T}()
-end
+flatten(x::Option{Option{T}}) where T = @unwrap_or x None{T}()
 
 export Result, Option,
     Thing, none, Ok, Err,

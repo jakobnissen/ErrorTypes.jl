@@ -16,6 +16,7 @@ using Test
 
     # Convert from Option
     @test convert(Option{Integer}, Thing(1)) isa Option{Integer}
+    @test convert(Option{AbstractString}, None{String}()) isa Option{AbstractString}
     @test convert(Option{Union{String, Dict}}, Thing("foo")) isa Option{Union{String, Dict}}
     @test convert(Option{String}, None{Int}()) isa Option{String}
     @test convert(Option{Float64}, None{Float64}()) isa Option{Float64}
@@ -92,6 +93,8 @@ end
     @test convert(Result{Union{String, Int}, Int}, Ok("foo")).data isa Ok{Union{String, Int}, Int}
 
     # convert a result directly to another if all the subtypes match
+    x = Ok{Bool, Bool}(true)
+    @test convert(Result{Bool, Bool}, x) === x
     @test convert(Result{Integer, AbstractString}, Err{Int, String}("boo")) isa Result{Integer, AbstractString}
     @test convert(Result{Signed, String}, Ok{Int32, String}(Int32(9))) isa Result{Signed, String}
     @test_throws MethodError convert(Result{Dict, Array}, Ok{Int, Bool}(1))
