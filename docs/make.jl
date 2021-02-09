@@ -10,7 +10,8 @@ makedocs(;
 
     pages = [
         "Home" => "index.md",
-        "Why use ErrorTypes?" => "motivation.md"
+        "Usage" => "usage.md",
+        "Why use ErrorTypes?" => "motivation.md",
     ],
     repo="https://github.com/jakobnissen/ErrorTypes.jl/blob/{commit}{path}#L{line}",
     sitename="ErrorTypes.jl",
