@@ -66,6 +66,13 @@ using Test
     @test and_then(x -> abs(x), Thing(-55)) === Thing(55)
     @test and_then(x -> x + 1, None{String}()) === None{String}()
     @test and_then(x -> "foo", None{Int}()) === None{Int}()
+
+    # flatten
+    @test flatten(Thing(Thing(11))) == Thing(11)
+    @test flatten(Thing(Thing("foo"))) == Thing("foo")
+    @test flatten(Thing(None{Float64}())) == None{Float64}()
+    @test flatten(None{Option{Dict{Int, Int}}}()) == None{Dict{Int, Int}}()
+    @test flatten(Thing(Thing(None{Int}()))) == Thing(None{Int}())
 end
 
 @testset "Result" begin

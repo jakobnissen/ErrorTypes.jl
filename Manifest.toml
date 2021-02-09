@@ -3,13 +3,6 @@
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
-[[InteractiveUtils]]
-deps = ["Markdown"]
-uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
-
-[[Logging]]
-uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
-
 [[MacroTools]]
 deps = ["Markdown", "Random"]
 git-tree-sha1 = "6a8a2a625ab0dea913aba95c11370589e0239ff0"
@@ -29,12 +22,6 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[SumTypes]]
 deps = ["MacroTools"]
-git-tree-sha1 = "162e2efb719cf04ee51d6341dc84a26a5bba3de2"
-repo-rev = "master"
-repo-url = "https://github.com/MasonProtter/SumTypes.jl"
+git-tree-sha1 = "be127ca4ba297c1574457baa0ac3092b0054395e"
 uuid = "8e1ec7a9-0e02-4297-b0fe-6433085c89f2"
 version = "0.1.1"
-
-[[Test]]
-deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
-uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

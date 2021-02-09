@@ -1,3 +1,12 @@
+## Release 0.3
+__Breaking changes__
+
+None
+
+__New features__
+
+* New function `flatten`. Turns an `Option{Option{T}}` into an `Option{T}`.
+
 ## Release 0.2
 __Breaking changes__
 
@@ -11,4 +20,3 @@ __New features__
 
 ## Release 0.1
 Initial release
-

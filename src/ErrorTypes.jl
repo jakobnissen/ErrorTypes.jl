@@ -294,6 +294,7 @@ Evaluate `expr` to a `Result` or `Option`. If `expr` is a error value, evaluate
 `exec` and return that. Else, return the wrapped value in `expr`.
 
 # Examples
+
 ```
 julia> safe_inv(x)::Option{Float64} = iszero(x) ? none : Thing(1/x);
 
@@ -307,6 +308,7 @@ end;
 
 julia> skip_inv_sum([2,1,0,1,2])
 3.0
+```
 """
 macro unwrap_or(expr, exec)
     sym = gensym()
@@ -315,12 +317,32 @@ macro unwrap_or(expr, exec)
         if !isa($sym, Union{Result, Option})
             throw(TypeError(Symbol("@unwrap_or"), "", Union{Result, Option}, $sym))
         end
-        if is_error_value($sym)
+        data = $(sym).data
+        if isa(data, Union{None, Err})
             $(esc(exec))
         else
-            getinner($sym)
+            data._1
         end
     end
+end
+
+"""
+    flatten(x::Option{Option{T}})
+
+Convert an `Option{Option{T}}` to an `Option{T}`.
+
+# Examples
+
+```
+julia> flatten(Thing(Thing("x")))
+Option{String}: Thing("x")
+
+julia> flatten(Thing(ErrorTypes.None{Int}()))
+Option{Int64}: ErrorTypes.None()
+```
+"""
+function flatten(x::Option{Option{T}}) where T
+    @unwrap_or x None{T}()
 end
 
 export Result, Option,
@@ -328,7 +350,7 @@ export Result, Option,
     is_error, is_none,
     expect, expect_none,
     unwrap, unwrap_none,
-    and_then, unwrap_or,
+    and_then, unwrap_or, flatten,
     @?, @unwrap_or
 
 end # module
