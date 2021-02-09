@@ -114,6 +114,15 @@ end
 
 Option(x::Result{O}) where O = Thing(@unwrap_or x (return None{O}()))
 
+function Result(x::Option{T}, e::E) where {T, E}
+    data = x.data
+    if data isa Thing
+        Ok{T, E}(data._1)
+    else
+        Err{T, E}(e)
+    end
+end
+
 struct ResultConstructor{R,T}
     x::T
 end
@@ -227,31 +236,6 @@ is_error(x::Result{O, E}) where {O, E} = x.data isa Err{O, E}
 is_none(x::Option{T}) where T = x.data isa None{T}
 
 """
-    ok_or(x::Option{T}, e::E) -> Result{T, E}
-
-Construct a `Result{T, E}` from an `Option{T}`, mapping `None` to `Err(e)`
-and `Thing(x)` to `Ok(x)`.
-
-# Examples
-
-```
-julia> ok_or(ErrorTypes.None{Int}(), 1.0)
-Result{Int64, Float64}: Err(1.0)
-
-julia> ok_or(Thing(11), "Not odd")
-Result{Int64, String}: Ok(11)
-```
-"""
-function ok_or(x::Option{T}, e::E) where {T, E}
-    data = x.data
-    if data isa Thing
-        Ok{T, E}(data._1)
-    else
-        Err{T, E}(e)
-    end
-end
-
-"""
     expect(x::Union{Result, Option}, s::AbstractString
 
 If `x` is of the associated error type, error with message `s`. Else, return
@@ -361,7 +345,7 @@ export Result, Option,
     is_error, is_none,
     expect, expect_none,
     unwrap, unwrap_none,
-    and_then, unwrap_or, flatten, ok_or,
+    and_then, unwrap_or, flatten,
     @?, @unwrap_or
 
 end # module

@@ -5,6 +5,8 @@ None
 
 __New features__
 
+* An `Option{T}` can now be constructed from a `Result{T}`, yielding the error value if the result contains an error value.
+* A `Result{O, E}` can now be constructed using `Result(::Option{O}, e::E)`. If the option contains an error value, this will result in `Err{O, E}(e)`
 * New function `flatten`. Turns an `Option{Option{T}}` into an `Option{T}`.
 
 ## Release 0.2
