@@ -141,6 +141,17 @@ end
     @test and_then(x -> "foo", Err{Int, Int}(1)) === Err{Int, Int}(1)
 end
 
+@testset "Interaction" begin
+    # Construct Option from Result
+    @test Option(Ok{String, Int}("foo")) == Thing("foo")
+    @test Option(Err{String, Int}(15)) == None{String}()
+
+    # ok_or
+    @test ok_or(None{String}(), 0x01) == Err{String, UInt8}(0x01)
+    @test ok_or(Thing(0x1234), []) == Ok{UInt16, Vector{Any}}(0x1234)
+    @test ok_or(Thing(1), 2) == Ok{Int, Int}(1)
+end
+
 @testset "@?" begin
     # Generic Option usage
     function testf1(x)::Option{typeof(x)}

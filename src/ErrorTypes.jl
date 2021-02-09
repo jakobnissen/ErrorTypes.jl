@@ -26,7 +26,7 @@ Result
 @sum_type Option{T} begin
     Thing{T}(::T)    
     None{T}()
-end
+end    
 
 """
     Option{T}
@@ -35,6 +35,84 @@ A sum type of either `Thing{T}` or `None`. Used instead of `Result` as return
 value of functions whose error state need not carry any information.
 """
 Option
+
+"""
+    @?(expr)
+
+Propagate a `Result` or `Option` error value to the outer function.
+Evaluate `expr`, which should return a `Result` or `Option`. If it contains
+an error value, return the error value from the outer function. Else, the macro
+evaluates to the result value of `expr`.
+
+# Example
+julia> (f(x::Option{T})::Option{T}) where T = Thing(@?(x) + one(T))
+
+julia> f(Thing(1.0)), f(None{Int}())
+(Option{Float64}: Thing(2.0), Option{Int64}: None())
+"""
+macro var"?"(expr)
+    sym = gensym()
+    quote
+        $(sym) = $(esc(expr))
+        if !isa($sym, Union{Result, Option})
+            throw(TypeError(Symbol("@?"), "", Union{Result, Option}, $sym))
+        end
+        if $sym isa Option
+            if ($sym).data isa Thing
+                ($sym).data._1
+            else
+                return none
+            end
+        else
+            if ($sym).data isa Ok
+                ($sym).data._1
+            else
+                return $sym
+            end
+        end
+    end
+end
+
+"""
+    @unwrap_or(expr, exec)
+
+Evaluate `expr` to a `Result` or `Option`. If `expr` is a error value, evaluate
+`exec` and return that. Else, return the wrapped value in `expr`.
+
+# Examples
+
+```
+julia> safe_inv(x)::Option{Float64} = iszero(x) ? none : Thing(1/x);
+
+julia> function skip_inv_sum(it)
+    sum = 0.0
+    for i in it
+        sum += @unwrap_or safe_inv(i) continue
+    end
+    sum
+end;
+
+julia> skip_inv_sum([2,1,0,1,2])
+3.0
+```
+"""
+macro unwrap_or(expr, exec)
+    sym = gensym()
+    quote
+        $(sym) = $(esc(expr))
+        if !isa($sym, Union{Result, Option})
+            throw(TypeError(Symbol("@unwrap_or"), "", Union{Result, Option}, $sym))
+        end
+        data = $(sym).data
+        if isa(data, Union{None, Err})
+            $(esc(exec))
+        else
+            data._1
+        end
+    end
+end
+
+Option(x::Result{O}) where O = Thing(@unwrap_or x (return None{O}()))
 
 struct ResultConstructor{R,T}
     x::T
@@ -149,6 +227,31 @@ is_error(x::Result{O, E}) where {O, E} = x.data isa Err{O, E}
 is_none(x::Option{T}) where T = x.data isa None{T}
 
 """
+    ok_or(x::Option{T}, e::E) -> Result{T, E}
+
+Construct a `Result{T, E}` from an `Option{T}`, mapping `None` to `Err(e)`
+and `Thing(x)` to `Ok(x)`.
+
+# Examples
+
+```
+julia> ok_or(ErrorTypes.None{Int}(), 1.0)
+Result{Int64, Float64}: Err(1.0)
+
+julia> ok_or(Thing(11), "Not odd")
+Result{Int64, String}: Ok(11)
+```
+"""
+function ok_or(x::Option{T}, e::E) where {T, E}
+    data = x.data
+    if data isa Thing
+        Ok{T, E}(data._1)
+    else
+        Err{T, E}(e)
+    end
+end
+
+"""
     expect(x::Union{Result, Option}, s::AbstractString
 
 If `x` is of the associated error type, error with message `s`. Else, return
@@ -237,82 +340,6 @@ function unwrap_or(x::Result, v)
 end
 
 """
-    @?(expr)
-
-Propagate a `Result` or `Option` error value to the outer function.
-Evaluate `expr`, which should return a `Result` or `Option`. If it contains
-an error value, return the error value from the outer function. Else, the macro
-evaluates to the result value of `expr`.
-
-# Example
-julia> (f(x::Option{T})::Option{T}) where T = Thing(@?(x) + one(T))
-
-julia> f(Thing(1.0)), f(None{Int}())
-(Option{Float64}: Thing(2.0), Option{Int64}: None())
-"""
-macro var"?"(expr)
-    sym = gensym()
-    quote
-        $(sym) = $(esc(expr))
-        if !isa($sym, Union{Result, Option})
-            throw(TypeError(Symbol("@?"), "", Union{Result, Option}, $sym))
-        end
-        if $sym isa Option
-            if ($sym).data isa Thing
-                ($sym).data._1
-            else
-                return none
-            end
-        else
-            if ($sym).data isa Ok
-                ($sym).data._1
-            else
-                return $sym
-            end
-        end
-    end
-end
-
-"""
-    @unwrap_or(expr, exec)
-
-Evaluate `expr` to a `Result` or `Option`. If `expr` is a error value, evaluate
-`exec` and return that. Else, return the wrapped value in `expr`.
-
-# Examples
-
-```
-julia> safe_inv(x)::Option{Float64} = iszero(x) ? none : Thing(1/x);
-
-julia> function skip_inv_sum(it)
-    sum = 0.0
-    for i in it
-        sum += @unwrap_or safe_inv(i) continue
-    end
-    sum
-end;
-
-julia> skip_inv_sum([2,1,0,1,2])
-3.0
-```
-"""
-macro unwrap_or(expr, exec)
-    sym = gensym()
-    quote
-        $(sym) = $(esc(expr))
-        if !isa($sym, Union{Result, Option})
-            throw(TypeError(Symbol("@unwrap_or"), "", Union{Result, Option}, $sym))
-        end
-        data = $(sym).data
-        if isa(data, Union{None, Err})
-            $(esc(exec))
-        else
-            data._1
-        end
-    end
-end
-
-"""
     flatten(x::Option{Option{T}})
 
 Convert an `Option{Option{T}}` to an `Option{T}`.
@@ -334,7 +361,7 @@ export Result, Option,
     is_error, is_none,
     expect, expect_none,
     unwrap, unwrap_none,
-    and_then, unwrap_or, flatten,
+    and_then, unwrap_or, flatten, ok_or,
     @?, @unwrap_or
 
 end # module
