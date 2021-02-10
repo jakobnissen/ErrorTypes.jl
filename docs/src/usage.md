@@ -6,7 +6,7 @@ __Option{T}__ encodes either the presence of a `T` or the absence of one. You sh
 An `Option` contains two _variants_, `None` and `Thing`. Like other sum types, you should usually not construct an `Option` directly. Instead, the constructors for the types `None` and `Thing` creates an `Option` wrapping them. Similarly, you should not construct a `None` or `Thing` directly - these types are only useful as the content of an `Option`.
 
 * You should construct an `Option{T}` wrapping a `Thing` with `Thing(::T)`.
-* You _can_ construct an `Option{T}` warpping a `None` object with `ErrorTypes.None{Int}()`. Normally, however, you should use the object `none` (singleton of `None{Nothing}`) and convert it to an `Option{T}`. See how in the section "Basic usage". Indeed, `None` is not exported for this reason.
+* You _can_ construct an `Option{T}` warpping a `None` object with `ErrorTypes.None{Int}()`. Normally, however, you should use the object `none` (singleton of `None{Nothing}`) and convert it to an `Option{T}`. See how in the section "Basic usage".
 
 __Result{O, E}__ has the two variants `Ok`, representing the successful creation of an `O`, or else an `E`, representing some object carrying information about the error. You should use `Result` instead of `Option` when the error needs to be explained.
 

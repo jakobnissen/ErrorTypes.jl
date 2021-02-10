@@ -12,6 +12,7 @@ __New features__
 * New function `flatten`. Turns an `Option{Option{T}}` into an `Option{T}`.
 * New function: `unwrap_err(::Result)`. Unwraps the wrapped error type of a `Result`, and throws an error if the `Result` conains an `Ok`
 * New function: `expect_err(::Result, ::AbstractString)`. Similar to `unwrap_err`, but throws an error with a custom message.
+* `None` is now exported.
 
 ## Release 0.2
 __Breaking changes__

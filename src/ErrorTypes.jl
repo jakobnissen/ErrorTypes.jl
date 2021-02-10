@@ -46,7 +46,7 @@ Else, evaluates to `return none` for `Option` and `return Err(x)` for Result.
 
 # Example
 
-```
+```jldoctest
 julia> (f(x::Option{T})::Option{T}) where T = Thing(@?(x) + one(T))
 
 julia> f(Thing(1.0)), f(None{Int}())
@@ -76,6 +76,7 @@ macro var"?"(expr)
     end
 end
 
+# Note: jldoctests crashes on this ATM, even if it works correctly.
 """
     @unwrap_or(expr, exec)
 
@@ -323,18 +324,18 @@ Convert an `Option{Option{T}}` to an `Option{T}`.
 
 # Examples
 
-```
+```jldoctest
 julia> flatten(Thing(Thing("x")))
 Option{String}: Thing("x")
 
-julia> flatten(Thing(ErrorTypes.None{Int}()))
-Option{Int64}: ErrorTypes.None()
+julia> flatten(Thing(None{Int}()))
+Option{Int64}: None()
 ```
 """
 flatten(x::Option{Option{T}}) where T = @unwrap_or x None{T}()
 
 export Result, Option,
-    Thing, none, Ok, Err,
+    Thing, None, none, Ok, Err,
     is_error, is_none,
     expect, expect_none, expect_err,
     unwrap, unwrap_none, unwrap_err,
