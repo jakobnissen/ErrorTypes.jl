@@ -18,9 +18,9 @@ using Test
     @test convert(Option{Integer}, Thing(1)) isa Option{Integer}
     @test convert(Option{AbstractString}, None{String}()) isa Option{AbstractString}
     @test convert(Option{Union{String, Dict}}, Thing("foo")) isa Option{Union{String, Dict}}
-    @test convert(Option{String}, None{Int}()) isa Option{String}
     @test convert(Option{Float64}, None{Float64}()) isa Option{Float64}
-    @test_throws ErrorException convert(Option{String}, Thing(1))
+    @test_throws MethodError convert(Option{String}, Thing(1))
+    @test_throws MethodError convert(Option{String}, None{Int}())
 
     # is_none
     @test is_none(None{Int}())
@@ -99,12 +99,11 @@ end
     @test convert(Result{Signed, String}, Ok{Int32, String}(Int32(9))) isa Result{Signed, String}
     @test_throws MethodError convert(Result{Dict, Array}, Ok{Int, Bool}(1))
 
-    # convert Result values with differing params. It works if the param of
-    # the variant is conveted to a supertype.
-    @test convert(Result{Integer, String}, Ok{Int32, Bool}(Int32(1))) isa Result{Integer, String}
-    @test convert(Result{Bool, Signed}, Err{String, Int}(15)) isa Result{Bool, Signed}
-    @test_throws ErrorException convert(Result{Dict, Integer}, Ok{Bool, Int}(true))
-    @test_throws ErrorException convert(Result{Signed, String}, Err{Int, AbstractArray}([]))
+    # Errors if converting from different result type
+    @test_throws MethodError convert(Result{Int, UInt}, Ok{Int, Int}(1))
+    @test_throws MethodError convert(Result{Int, UInt}, Err{UInt, UInt}(UInt(1)))
+    @test_throws MethodError convert(Result{Dict, Integer}, Ok{Bool, Int}(true))
+    @test_throws MethodError convert(Result{Signed, String}, Err{Int, AbstractArray}([]))
 
     @test_throws MethodError convert(Result{Int, String}, Ok("foo"))
     @test_throws MethodError convert(Result{Int, Int}, Err("foo"))
@@ -133,6 +132,19 @@ end
     @test expect(convert(Result{Int,Int}, Ok(17)), " ") === 17
     @test_throws ErrorException expect(Err{Int, UInt}(UInt(11)), "bar")
     @test_throws ErrorException expect(Err{Bool, Bool}(true), "foo")
+
+    # unwrap_err
+    @test unwrap_err(Err{String, UInt}(UInt(19))) == UInt(19)
+    @test unwrap_err(Err{AbstractDict, String}("bar")) == "bar"
+    @test_throws ErrorException unwrap_err(Ok{Int, Int}(1))
+    @test_throws ErrorException unwrap_err(Ok{String, Int}("bar"))
+
+    # expect_err
+    @test expect_err(Err{Vector, AbstractString}("x"), "foo") == "x"
+    @test expect_err(Err{Int, UInt8}(0xa4), "mistake!") == 0xa4
+    @test_throws ErrorException expect_err(Ok{Int, UInt8}(15), "foobar")
+    @test_throws ErrorException expect_err(Ok{Vector, AbstractString}([]), "xx")
+    
 
     # and_then
     @test and_then(x -> x + 1, Ok{Float64, String}(5.0)) === Ok{Float64, String}(6.0)

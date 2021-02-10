@@ -41,8 +41,8 @@ Option
 
 Propagate a `Result` or `Option` error value to the outer function.
 Evaluate `expr`, which should return a `Result` or `Option`. If it contains
-an error value, return the error value from the outer function. Else, the macro
-evaluates to the result value of `expr`.
+a result value `x`, evaluate to the unwrapped value `x`.
+Else, evaluates to `return none` for `Option` and `return Err(x)` for Result.
 
 # Example
 julia> (f(x::Option{T})::Option{T}) where T = Thing(@?(x) + one(T))
@@ -67,7 +67,7 @@ macro var"?"(expr)
             if ($sym).data isa Ok
                 ($sym).data._1
             else
-                return $sym
+                return Err($(sym).data._1)
             end
         end
     end
@@ -169,29 +169,6 @@ function Base.convert(::Type{Result{O1, E1}}, x::Result{O2, E2}
     end
 end
 
-# Convert Result value that contains an Err, even if the Ok parameter
-# doesn't match, e.g. Err{Int, Float32} -> Err{String, AbstractFloat}
-function Base.convert(::Type{Result{O1, E1}}, x::Result{O2, E2}
-) where {O1, O2, E1, E2 <: E1}
-    data = x.data
-    if data isa Err
-        return Err{O1, E1}(data._1)
-    else
-        error("cannot convert Ok value")
-    end
-end
-
-# Same as above, but for Ok.
-function Base.convert(::Type{Result{O1, E1}}, x::Result{O2, E2}
-) where {O1, E1, E2, O2 <: O1}
-    data = x.data
-    if data isa Ok
-        return Ok{O1, E1}(data._1)
-    else
-        error("cannot convert Err value")
-    end
-end
-
 """
     None{T}
 
@@ -212,15 +189,6 @@ function Base.convert(::Type{Option{T1}}, x::Option{T2}) where {T1, T2 <: T1}
         Thing{T1}(data._1)
     else
         None{T1}()
-    end
-end
-
-function Base.convert(::Type{Option{T1}}, x::Option{T2}) where {T1, T2}
-    data = x.data
-    if data isa None
-        return None{T1}()
-    else
-        error("cannot convert Thing value")
     end
 end
 
@@ -256,11 +224,22 @@ end
 """
     expect_none(x::Option, s::AbstractString)
 
-If `x` contains a None, return nothing. Else, throw an error with message `s`.
+If `x` contains a `None`, return `nothing`. Else, throw an error with message `s`.
 """
 expect_none(x::Option, s::AbstractString) = is_none(x) ? nothing : error(s)
 
-@noinline unwrap_err() = error("unwrap on unexpected type")
+"""
+    expect_err(x::Result, s::AbstractString)
+
+If `x` contains an `Err`, return the content of the `Err`. Else, throw an error
+with message `s`.
+"""
+function expect_err(x::Result, s::AbstractString)
+    data = x.data
+    data isa Err ? data._1 : error(s)
+end
+
+@noinline throw_unwrap_err() = error("unwrap on unexpected type")
 
 """
     unwrap(x::Union{Result, Option})
@@ -272,20 +251,31 @@ function unwrap end
 
 function unwrap(x::Result)
     data = x.data
-    data isa Ok ? data._1 : unwrap_err()
+    data isa Ok ? data._1 : throw_unwrap_err()
 end
 
 function unwrap(x::Option)
     data = x.data
-    data isa Thing ? data._1 : unwrap_err()
+    data isa Thing ? data._1 : throw_unwrap_err()
 end
 
 """
-    unwrap_none(x::Option, s::AbstractString)
+    unwrap_none(x::Option)
 
-If `x` contains a None, return nothing. Else, throw an error.
+If `x` contains a `None`, return `nothing`. Else, throw an error.
 """
-unwrap_none(x::Option) = is_none(x) ? nothing : unwrap_err()
+unwrap_none(x::Option) = is_none(x) ? nothing : throw_unwrap_err()
+
+"""
+    unwrap_err(x::Result)
+
+If `x` contains an `Err`, return the content of the `Err`. Else, throw an error.
+"""
+function unwrap_err(x::Result)
+    data = x.data
+    data isa Err ? data._1 : throw_unwrap_err()
+end
+
 
 """
     and_then(f, x::Union{Option, Result})
@@ -343,8 +333,8 @@ flatten(x::Option{Option{T}}) where T = @unwrap_or x None{T}()
 export Result, Option,
     Thing, none, Ok, Err,
     is_error, is_none,
-    expect, expect_none,
-    unwrap, unwrap_none,
+    expect, expect_none, expect_err,
+    unwrap, unwrap_none, unwrap_err,
     and_then, unwrap_or, flatten,
     @?, @unwrap_or
 
