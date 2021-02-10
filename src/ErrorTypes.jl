@@ -286,6 +286,10 @@ end
 
 If `x` is an error value, return `x`. Else, apply `f` to the contained value and
 return it wrapped as the same type as `x`.
+
+__WARNING__
+Use of `and_then` may lead to type unstable code, since `f` is only applied
+to some instances of the input type.
 """
 function and_then(f, x::Option)
     data = x.data
