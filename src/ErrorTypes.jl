@@ -45,10 +45,13 @@ a result value `x`, evaluate to the unwrapped value `x`.
 Else, evaluates to `return none` for `Option` and `return Err(x)` for Result.
 
 # Example
+
+```
 julia> (f(x::Option{T})::Option{T}) where T = Thing(@?(x) + one(T))
 
 julia> f(Thing(1.0)), f(None{Int}())
 (Option{Float64}: Thing(2.0), Option{Int64}: None())
+```
 """
 macro var"?"(expr)
     sym = gensym()
@@ -204,7 +207,7 @@ is_error(x::Result{O, E}) where {O, E} = x.data isa Err{O, E}
 is_none(x::Option{T}) where T = x.data isa None{T}
 
 """
-    expect(x::Union{Result, Option}, s::AbstractString
+    expect(x::Union{Result, Option}, s::AbstractString)
 
 If `x` is of the associated error type, error with message `s`. Else, return
 the contained result type.
