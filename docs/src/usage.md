@@ -1,14 +1,14 @@
 # Usage
 
 ### Types and how to construct them
-__Option{T}__ encodes either the presence of a `T` or the absence of one. You should use this type to encode either the successful creation of `T`, or a failure that does not need any information to explain itself. Like its sibling `Result`, `Option` is a sum type from the package SumTypes - think of it like a facy `Enum`.
+__Option{T}__ encodes either the presence of a `T` or the absence of one. You should use this type to encode either the successful creation of `T`, or a failure that does not need any information to explain itself. Like its sibling `Result`, `Option` is a sum type from the package SumTypes - think of it like a fancy `Enum`.
 
 An `Option` contains two _variants_, `None` and `Thing`. Like other sum types, you should usually not construct an `Option` directly. Instead, the constructors for the types `None` and `Thing` creates an `Option`, wrapping them - e.g. `None{Int}()` creates an `Option{Int}` containing a `None`. Similarly, you should not construct a `None` or `Thing` directly - these types are only useful as the content of an `Option`.
 
 * You should construct an `Option{T}` wrapping a `Thing` with `Thing(::T)`.
 * You _can_ construct an `Option{T}` warpping a `None` object with `None{Int}()`. Normally, however, you should use the object `none` (singleton of `None{Nothing}`) and convert it to an `Option{T}`. See how in the section "Basic usage" below.
 
-__Result{O, E}__ has the two variants `Ok`, representing the successful creation of an `O`, or else an `Err`,, representing some object of type `E`, carrying information about the error state. You should use `Result` instead of `Option` when the error result needs to carry information.
+__Result{O, E}__ has the two variants `Ok`, representing the successful creation of an `O`, or else an `Err`, representing some object of type `E`, carrying information about the error state. You should use `Result` instead of `Option` when the error result needs to carry information.
 
 * You _can_ construct `Result` objects by `Ok{O, E}(::O)` or `Err{O, E}(::E)`. However, normally, you should instead use the simpler constructors `Ok(::O)` and `Err(::E)`. These constructors creates `ResultConstructor` objects, which can be converted to the correct `Result` types. See an example below.
 
@@ -74,9 +74,9 @@ end
 ### When to use an error type vs throw an error
 The error handling mechanism provided by ErrorTypes is a distinct method from throwing and catching errors. None is superior to the other in all circumstances.
 
-The handling provided by ErrorTypes is faster, safer, and more explicit. For *most* functions, you can use ErrorTypes. However, you can't *only* rely on it. Imagine a function `A` returning `Option{T1}`. `A` is called from function `B`, which can itself fail and returns an `Option{T2}`. However, now there are two distinct error states: Failure in `A` and failure in `B`. So what should `B` return? `Result{O, Enum{E1, E2}}`, for some `Enum` type? But then, what about functions calling `B`? Where does it end?
+The handling provided by ErrorTypes is faster, safer, and more explicit. For *most* functions, you can use ErrorTypes. However, you can't *only* rely on it. Imagine a function `A` returning `Option{T1}`. `A` is called from function `B`, which can itself fail and returns an `Option{T2}`. However, now there are two distinct error states: Failure in `A` and failure in `B`. So what should `B` return? `Result{T2, Enum{E1, E2}}`, for some `Enum` type? But then, what about functions calling `B`? Where does it end?
 
-In general, it's un-idiomatic to "accumulate" error states like this. You should handle an error state when it appears, and usually not return it too far back the call chain.
+In general, it's un-idiomatic to "accumulate" error states like this. You should handle an error state when it appears, and usually not return it far back the call chain.
 
 More importantly, you should distinguish between _recoverable_ and _unrecoverable_ error states. The unrecoverable are unexpected, and reveals that the program went wrong somehow. If the program went somewhere it shouldn't be, it's best to abort the program and show the stack trace, so you can debug it - here, an ordinary exception is better. If the errors are known to be possible beforehand, using ErrorTypes is better. For example, a program may use exceptions when encountering errors when parsing "internal" machine-generated files, which are _supposed_ to be of a certain format, and use error types when parsing user input, which must always be expected to be possibly fallible.
 
