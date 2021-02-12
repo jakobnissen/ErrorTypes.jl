@@ -282,27 +282,24 @@ end
 
 
 """
-    and_then(f, x::Union{Option, Result})
+    and_then(f, ::Type{T}, x::Union{Option, Result{O, E}})
 
-If `x` is an error value, return `x`. Else, apply `f` to the contained value and
-return it wrapped as the same type as `x`.
+If `is` a result value, apply `f` to `unwrap(x)`, else return the error value. Always returns an `Option{T}` / `Result{T, E}`.
 
 __WARNING__
-Use of `and_then` may lead to type unstable code, since `f` is only applied
-to some instances of the input type.
+If `f(unwrap(x))` is not a `T`, this functions throws an error.
 """
-function and_then(f, x::Option)
+function and_then(f, ::Type{T}, x::Option) where T
     data = x.data
-    data isa Thing ? Thing(f(data._1)) : x
+    data isa Thing ? Thing{T}(f(data._1)) : None{T}()
 end
 
-function and_then(f, x::Result{O, E}) where {O, E}
+function and_then(f, ::Type{T}, x::Result{O, E}) where {T, O, E}
     data = x.data
     if data isa Ok
-        v = f(data._1)
-        Ok{typeof(v), E}(v)
+        Ok{T, E}(f(data._1))
     else
-        x
+        Err{T, E}(data._1)
     end
 end
 

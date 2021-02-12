@@ -63,10 +63,10 @@ using Test
     @test_throws ErrorException expect_none(Thing(Bool[]), "bar")
 
     # and_then
-    @test and_then(x -> x + 1, Thing(0.0)) === Thing(1.0)
-    @test and_then(x -> abs(x), Thing(-55)) === Thing(55)
-    @test and_then(x -> x + 1, None{String}()) === None{String}()
-    @test and_then(x -> "foo", None{Int}()) === None{Int}()
+    @test and_then(x -> x + 1, Float64, Thing(0.0)) === Thing(1.0)
+    @test and_then(x -> abs(x) % UInt, UInt, Thing(-55)) === Thing(UInt(55))
+    @test and_then(x -> x + 1, Bool, None{String}()) === None{Bool,}()
+    @test and_then(x -> "foo", Int, None{Int}()) === None{Int}()
 
     # flatten
     @test flatten(Thing(Thing(11))) == Thing(11)
@@ -147,10 +147,10 @@ end
     
 
     # and_then
-    @test and_then(x -> x + 1, Ok{Float64, String}(5.0)) === Ok{Float64, String}(6.0)
-    @test and_then(x -> abs(x), Ok{Int, Dict}(-55)) === Ok{Int, Dict}(55)
-    @test and_then(x -> x + 1, Err{String, Int}(1)) === Err{String, Int}(1)
-    @test and_then(x -> "foo", Err{Int, Int}(1)) === Err{Int, Int}(1)
+    @test and_then(x -> x + 1, Float64, Ok{Float64, String}(5.0)) === Ok{Float64, String}(6.0)
+    @test and_then(x -> abs(x) % UInt8, UInt8, Ok{Int, Dict}(-55)) === Ok{UInt8, Dict}(UInt8(55))
+    @test and_then(x -> x + 1, Bool, Err{String, Int}(1)) === Err{Bool, Int}(1)
+    @test and_then(x -> "foo", Dict, Err{Int, Int}(1)) === Err{Dict, Int}(1)
 end
 
 @testset "Interaction" begin
