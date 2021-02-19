@@ -3,14 +3,14 @@
 ### Types and how to construct them
 __Option{T}__ encodes either the presence of a `T` or the absence of one. You should use this type to encode either the successful creation of `T`, or a failure that does not need any information to explain itself. Like its sibling `Result`, `Option` is a sum type from the package SumTypes - think of it like a fancy `Enum`.
 
-An `Option` contains two _variants_, `None` and `Thing`. Like other sum types, you should usually not construct an `Option` directly. Instead, the constructors for the types `None` and `Thing` creates an `Option`, wrapping them - e.g. `None{Int}()` creates an `Option{Int}` containing a `None`. Similarly, you should not construct a `None` or `Thing` directly - these types are only useful as the content of an `Option`.
+An `Option` contains _one_ of two _variants_, `None` and `Thing`. Like other sum types, you should usually not construct an `Option` directly. Instead, the constructors for the types `None` and `Thing` creates an `Option`, wrapping them - e.g. `None{Int}()` creates an `Option{Int}` containing a `None`. Similarly, you should not construct a `None` or `Thing` directly - these types are only useful as the content of an `Option`.
 
 * You should construct an `Option{T}` wrapping a `Thing` with `Thing(::T)`.
 * You _can_ construct an `Option{T}` warpping a `None` object with `None{Int}()`. Normally, however, you should use the object `none` (singleton of `None{Nothing}`) and convert it to an `Option{T}`. See how in the section "Basic usage" below.
 
 __Result{O, E}__ has the two variants `Ok`, representing the successful creation of an `O`, or else an `Err`, representing some object of type `E`, carrying information about the error state. You should use `Result` instead of `Option` when the error result needs to carry information.
 
-* You _can_ construct `Result` objects by `Ok{O, E}(::O)` or `Err{O, E}(::E)`. However, normally, you should instead use the simpler constructors `Ok(::O)` and `Err(::E)`. These constructors creates `ResultConstructor` objects, which can be converted to the correct `Result` types. See an example below.
+* You _can_ construct `Result` objects by `Ok{O, E}(::O)` or `Err{O, E}(::E)`. However, normally, you should instead use the simpler constructors `Ok(::O)` and `Err(::E)`. These constructors creates `ResultConstructor` objects, which can be converted to the correct `Result` types.
 
 ### Basic usage
 Always typeassert any function that returns an error type. The whole point of ErrorTypes is to encode error states in return types, and be specific about these error states. While ErrorTypes will _technically_ work fine without function annotations, I highly recommend annotating return types:
@@ -32,11 +32,11 @@ Also, by annotating return functions, you can use the simpler constructors of er
 ### Conversion
 Apart from the two special cases above: The conversion of `none` (of type `None`) to `Option`, and `Err(x)` and `Ok(x)` (of type `ResultConstructor`) to `Result`, error types can only convert to each other in certain circumstances. This is intentional, because type conversion is a major source of mistakes.
 
-* An object of type `Option` and `Result` can be converted to its own type.
+* An object of type `Option` and `Result` can be converted to its own type, i.e. `convert(T, ::T)` works.
 * An `Option{T}` can be converted to an `Option{T2}`, if `T <: T2`. You intentionally cannot convert e.g. an `Option{Int}` to an `Option{UInt}`.
 * A `Result{O, E}` can be converted to a `Result{O2, E2}` if `O <: O2` and `E <: E2`.
 
-It is intentionally NOT possible to e.g. convert a `Result{Int, String}` containing an `Ok` to a `Result{Int, Int}`, even if the `Ok` value contains an `Int` which is allowed in both of the `Result` types. The reason for this is that if it was allowed, whether or not conversions threw errors would depend on the _value_ of an error type, not the type. The idea behind this package is to present edge cases as types, not values.
+It is intentionally NOT possible to e.g. convert a `Result{Int, String}` containing an `Ok` to a `Result{Int, Int}`, even if the `Ok` value contains an `Int` which is allowed in both of the `Result` types. The reason for this is that if it was allowed, whether or not conversions threw errors would depend on the _value_ of an error type, not the type. This type-unstable behaviour would defeat idea behind this package, namely to present edge cases as types, not values.
 
 ### @?
 If you make an entire codebase of functions returning `Result`s and `Option`s, it can get bothersome to constantly check if function calls contain error values and propagate those error values. To make this process easier, use the macro `@?`, which automatically propagates any error values. If this is applied to some expression `x` evaluating to a `Result` or `Option` containing an error value, the macro will evaluate to something equivalent to `return Err(unwrap_err(x))` or `return none`, respectively. If it contains a result value, the macro is evaluated to the equivalent of `unwrap(x)`.
@@ -44,7 +44,7 @@ If you make an entire codebase of functions returning `Result`s and `Option`s, i
 For example, suppose you want to implement a safe version of the harmonic mean function, which in turn uses a safe version of `div`:
 
 ```julia
-safe_div(a::Integer, b::Float64)::Option{Float64} = iszero(b) ? none : Thing(a/b)
+safe_div(a::Integer, b::Real)::Option{Float64} = iszero(b) ? none : Thing(a/b)
 
 function harmonic_mean(v::AbstractArray{<:Integer})::Option{Float64}
     sm = 0.0
