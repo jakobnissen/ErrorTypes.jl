@@ -22,7 +22,7 @@ function second_csv_field(s::Union{String, SubString{String}})::Option{SubString
             p = i + 1
         end
     end
-    (isnothing(p) | p == ncodeunits(s) + 1) ? none : Thing(SubString(s, p, ncodeunits(s)))
+    (isnothing(p) | (p == ncodeunits(s) + 1)) ? none : Thing(SubString(s, p, ncodeunits(s)))
 end
 ```
 
@@ -31,8 +31,8 @@ This example shows usage of the type `Result`. When there are multiple error mod
 # corresponds to the error codes of libdeflate
 @enum DecompressError::UInt8 BadData TooShort TooLong
 
-function decompress(outbytes, inbytes)::Result{Int, DecompressError}
-    (n_bytes, errorcode) = ccall( ... ) # Call omitted here, returns an Int32
+function decompress(outbytes, inbytes)::Result{Int32, DecompressError}
+    (n_bytes, errorcode) = ccall( ... ) # Call omitted here, returns an (Int32, Int32)
     if !iszero(errorcode)
         return Err(DecompressError(errorcode - 1))
     else
@@ -50,7 +50,7 @@ function first_field(io::IO)::Option{String}
     nextit = iterate(lines)
     isnothing(nextit) && return none
     (line, _) = nextit
-    Thing(split(line, ',', limit=2)[1])
+    Thing(String(split(line, ',', limit=2)[1]))
 end
 ```
 
