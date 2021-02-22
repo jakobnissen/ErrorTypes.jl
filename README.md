@@ -41,16 +41,17 @@ function decompress(outbytes, inbytes)::Result{Int32, DecompressError}
 end
 ```
 
-You can of course mix and match regular exceptions and error types. That is useful when you have both *unrecoverable* and *recoverable* errors. In the following example, I'm getting the first field of first row of a comma separated file. We expect the file and its header to be present, and will error if it's not, but a valid CSV file may contain no rows:
+You can of course mix and match regular exceptions and error types. That is useful when you have both *unrecoverable* and *recoverable* errors. In the following example, I'm getting the first field of first row of a comma separated file. We expect the file and its header to be present, and the second row to be tab-separated, and will error if it's not, but a valid CSV file may contain no rows other than the header:
 ```julia
 function first_field(io::IO)::Option{String}
     lines = eachline(io)
-    (header, _) = iterate(lines)
-    @assert startswith(header, "#Name\t")
+    @assert startswith(first(iterate(lines)), "#Name\t")
     nextit = iterate(lines)
     isnothing(nextit) && return none
-    (line, _) = nextit
-    some(String(split(line, ',', limit=2)[1]))
+    line = first(nextit)
+    isempty(line) && return none
+    tab_pos::Int = findfirst(isequal('\t'), line)
+    some(line[1:tab_pos-1])
 end
 ```
 

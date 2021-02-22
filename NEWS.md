@@ -2,8 +2,8 @@
 __Breaking changes__
 
 * `Option{T}` has been revamped and is now an alias of `Result{T, Nothing}`. As a consequence, most code that used `Option` is now broken.
-* `Option`-specific functions `Thing`, `is_none`, `expect_none` and `unwrap_none` have been removed.
-* `none` is now a const for `Err(nothing)`, but works similarly.
+* `Option`-specific functions `Thing`, `None`, `is_none`, `expect_none` and `unwrap_none` have been removed.
+* `none` is now a const for `Err(nothing)`, but works similarly as before.
 * `none(::Type{T})` now creates an `Err{T, Nothing}(nothing)`, e.g. `none(T)` behaves like `None{T}()` before.
 * `some(x)` creates an `Ok{typeof(x), Nothing}(x)`, e.g. it's like `Thing(x)` before.
 * It is now ONLY possible to convert a `Result{O1, E1}` to a `Result{O2, E2}` if `O1 <: O2` and `E1 <: E2`.

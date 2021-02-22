@@ -15,6 +15,11 @@ using SumTypes
     Err{O, E}(::E)
 end
 
+"""
+    Option{T}
+
+Alias for `Result{T, Nothing}`
+"""
 const Option{T} = Result{T, Nothing}
 
 """
@@ -24,13 +29,6 @@ A sum type of either `Ok{O}` or `Err{E}`. Used as return value of functions that
 can error with an informative error object of type `E`.
 """
 Result
-
-"""
-    Option{T}
-
-Alias for `Result{T, Nothing}`
-"""
-Option
 
 function Option(x::Result{O, E}) where {O, E}
     data = x.data
@@ -139,17 +137,12 @@ Base.convert(::Type{Result{O, E}}, x::Result{O, E}) where {O, E} = x
 function Base.convert(::Type{Result{O1, E1}}, x::Result{O2, E2}
 ) where {O1, E1, O2 <: O1, E2 <: E1}
     data = x.data
-    if data isa Err
-        Err{O1, E1}(data._1)
-    else
-        Ok{O1, E1}(data._1)
-    end
+    data isa Err ? Err{O1, E1}(data._1) : Ok{O1, E1}(data._1)
 end
 
 const none = Err(nothing)
 none(::Type{T}) where T = Err{T, Nothing}(nothing)
 some(x::T) where T = Ok{T, Nothing}(x)
-
 
 is_error(x::Result{O, E}) where {O, E} = x.data isa Err{O, E}
 
@@ -159,8 +152,6 @@ is_error(x::Result{O, E}) where {O, E} = x.data isa Err{O, E}
 If `x` is of the associated error type, error with message `s`. Else, return
 the contained result type.
 """
-function expect end
-
 function expect(x::Result, s::AbstractString)
     data = x.data
     data isa Ok ? data._1 : error(s)
@@ -185,8 +176,6 @@ end
 If `x` is of the associated error type, throw an error. Else, return the contained
 result type.
 """
-function unwrap end
-
 function unwrap(x::Result)
     data = x.data
     data isa Ok ? data._1 : throw_unwrap_err()
@@ -202,22 +191,17 @@ function unwrap_err(x::Result)
     data isa Err ? data._1 : throw_unwrap_err()
 end
 
-
 """
     and_then(f, ::Type{T}, x::Result{O, E})
 
-If `is` a result value, apply `f` to `unwrap(x)`, else return the error value. Always returns an `Option{T}` / `Result{T, E}`.
+If `is` a result value, apply `f` to `unwrap(x)`, else return the error value. Always returns an `Result{T, E}`.
 
 __WARNING__
 If `f(unwrap(x))` is not a `T`, this functions throws an error.
 """
 function and_then(f, ::Type{T}, x::Result{O, E}) where {T, O, E}
     data = x.data
-    if data isa Ok
-        Ok{T, E}(f(data._1))
-    else
-        Err{T, E}(data._1)
-    end
+    data isa Ok ? Ok{T, E}(f(data._1)) : Err{T, E}(data._1)
 end
 
 """
@@ -225,7 +209,6 @@ end
 
 If `x` is an error value, return `v`. Else, unwrap `x` and return its content.
 """
-
 function unwrap_or(x::Result, v)
     data = x.data
     data isa Ok ? data._1 : v
@@ -246,13 +229,11 @@ julia> flatten(some(none(Int)))
 Option{Int64}: Err(nothing)
 ```
 """
-flatten(x::Option{Option{T}}) where T = @unwrap_or x Err{T, Nothing}(nothing)
+flatten(x::Option{Option{T}}) where T = unwrap_or(x, none(T))
 
 export Result, Option,
     none, some, Ok, Err,
-    is_error,
-    expect, expect_err,
-    unwrap, unwrap_err,
+    is_error, expect, expect_err, unwrap, unwrap_err,
     and_then, unwrap_or, flatten,
     @?, @unwrap_or
 
