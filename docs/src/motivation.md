@@ -42,7 +42,7 @@ using ErrorTypes
 
 function safer_findfirst(f, x)::Option{eltype(keys(x))}
     for (k, v) in pairs(x)
-        f(v) && return Thing(k) # thing: value
+        f(v) && return some(k) # some: value
     end
     none # none: absence of value
 end

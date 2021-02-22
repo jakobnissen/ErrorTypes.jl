@@ -8,12 +8,12 @@ __Example__
 using ErrorTypes
 
 function safe_maximum(x::AbstractArray)::Option{eltype(x)}
-    isempty(x) ? none : Thing(maximum(x))
+    isempty(x) ? none : some(maximum(x))
 end
 
 function using_safe_maximum(x)
     maybe = safe_maximum(x)
-    println(unwrap_or(and_then(y -> "Maximum is: $y", maybe), "ERROR: EMPTY ARRAY"))
+    println(unwrap_or(and_then(y -> "Maximum is: $y", String, maybe), "ERROR: EMPTY ARRAY"))
 end
 ```
 

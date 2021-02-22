@@ -12,17 +12,17 @@ ErrorTypes is a simple implementation of Rust-like error handling in Julia. Its 
 Read more in the documentation.
 
 ## Example usage
-This simple example shows a function that has one obvious error state, namely that there is no second field:
+This simple example shows a function that has one obvious error state, namely that there is no second field. This can be modelled with the `Option` type:
 ```julia
 function second_csv_field(s::Union{String, SubString{String}})::Option{SubString{String}}
     p = nothing
     for i in 1:ncodeunits(s)
         if codeunit(s, i) == UInt8(',')
-            isnothing(p) || return Thing(SubString(s, p, i-1)) 
+            isnothing(p) || return some(SubString(s, p, i-1)) 
             p = i + 1
         end
     end
-    (isnothing(p) | (p == ncodeunits(s) + 1)) ? none : Thing(SubString(s, p, ncodeunits(s)))
+    (isnothing(p) | (p == ncodeunits(s) + 1)) ? none : some(SubString(s, p, ncodeunits(s)))
 end
 ```
 
@@ -50,7 +50,7 @@ function first_field(io::IO)::Option{String}
     nextit = iterate(lines)
     isnothing(nextit) && return none
     (line, _) = nextit
-    Thing(String(split(line, ',', limit=2)[1]))
+    some(String(split(line, ',', limit=2)[1]))
 end
 ```
 
