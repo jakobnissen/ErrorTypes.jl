@@ -1,5 +1,5 @@
 # Note: This module is full of code like:
-# if x.data isa Thing
+# if x.data isa Ok
 #     x.data._1
 # else
 #
@@ -15,6 +15,8 @@ using SumTypes
     Err{O, E}(::E)
 end
 
+const Option{T} = Result{T, Nothing}
+
 """
     Result{O, E}
 
@@ -23,56 +25,45 @@ can error with an informative error object of type `E`.
 """
 Result
 
-@sum_type Option{T} begin
-    Thing{T}(::T)    
-    None{T}()
-end    
-
 """
     Option{T}
 
-A sum type of either `Thing{T}` or `None`. Used instead of `Result` as return
-value of functions whose error state need not carry any information.
+Alias for `Result{T, Nothing}`
 """
 Option
+
+function Option(x::Result{O, E}) where {O, E}
+    data = x.data
+    isa(data, Err) ? Err{O, Nothing}(nothing) : Ok{O, Nothing}(data._1)
+end
+
+function Result(x::Option{T}, e::E) where {T, E}
+    data = x.data
+    isa(data, Err) ? Err{T, E}(e) : Ok{T, E}(data._1)
+end
 
 """
     @?(expr)
 
-Propagate a `Result` or `Option` error value to the outer function.
-Evaluate `expr`, which should return a `Result` or `Option`. If it contains
-a result value `x`, evaluate to the unwrapped value `x`.
-Else, evaluates to `return none` for `Option` and `return Err(x)` for Result.
+Propagate a `Result` with `Err` value to the outer function.
+Evaluate `expr`, which should return a `Result`. If it contains an `Ok` value `x`,
+evaluate to the unwrapped value `x`. Else, evaluates to `return Err(x)`t.
 
 # Example
 
 ```jldoctest
-julia> (f(x::Option{T})::Option{T}) where T = Thing(@?(x) + one(T))
+julia> (f(x::Option{T})::Option{T}) where T = Ok(@?(x) + one(T));
 
-julia> f(Thing(1.0)), f(None{Int}())
-(Option{Float64}: Thing(2.0), Option{Int64}: None())
+julia> f(some(1.0)), f(none(Int))
+(Option{Float64}: Ok(2.0), Option{Int64}: Err(nothing))
 ```
 """
 macro var"?"(expr)
     sym = gensym()
     quote
         $(sym) = $(esc(expr))
-        if !isa($sym, Union{Result, Option})
-            throw(TypeError(Symbol("@?"), "", Union{Result, Option}, $sym))
-        end
-        if $sym isa Option
-            if ($sym).data isa Thing
-                ($sym).data._1
-            else
-                return none
-            end
-        else
-            if ($sym).data isa Ok
-                ($sym).data._1
-            else
-                return Err($(sym).data._1)
-            end
-        end
+        isa($sym, Result) || throw(TypeError(Symbol("@?"), "", Result, $sym))
+        ($sym).data isa Ok ? ($sym).data._1 : return Err($(sym).data._1)
     end
 end
 
@@ -80,13 +71,13 @@ end
 """
     @unwrap_or(expr, exec)
 
-Evaluate `expr` to a `Result` or `Option`. If `expr` is a error value, evaluate
+Evaluate `expr` to a `Result`. If `expr` is a error value, evaluate
 `exec` and return that. Else, return the wrapped value in `expr`.
 
 # Examples
 
 ```
-julia> safe_inv(x)::Option{Float64} = iszero(x) ? none : Thing(1/x);
+julia> safe_inv(x)::Option{Float64} = iszero(x) ? none : Ok(1/x);
 
 julia> function skip_inv_sum(it)
     sum = 0.0
@@ -104,26 +95,8 @@ macro unwrap_or(expr, exec)
     sym = gensym()
     quote
         $(sym) = $(esc(expr))
-        if !isa($sym, Union{Result, Option})
-            throw(TypeError(Symbol("@unwrap_or"), "", Union{Result, Option}, $sym))
-        end
-        data = $(sym).data
-        if isa(data, Union{None, Err})
-            $(esc(exec))
-        else
-            data._1
-        end
-    end
-end
-
-Option(x::Result{O}) where O = Thing(@unwrap_or x (return None{O}()))
-
-function Result(x::Option{T}, e::E) where {T, E}
-    data = x.data
-    if data isa Thing
-        Ok{T, E}(data._1)
-    else
-        Err{T, E}(e)
+        isa($sym, Result) || throw(TypeError(Symbol("@unwrap_or"), "", Result, $sym))
+        isa($(sym).data, Err) ? $(esc(exec)) : $(sym).data._1
     end
 end
 
@@ -173,64 +146,25 @@ function Base.convert(::Type{Result{O1, E1}}, x::Result{O2, E2}
     end
 end
 
-"""
-    None{T}
+const none = Err(nothing)
+none(::Type{T}) where T = Err{T, Nothing}(nothing)
+some(x::T) where T = Ok{T, Nothing}(x)
 
-The variant of `Option` signifying absence of a value of type `T`. The singleton
-`none` is the instance of `None{Nothing}` (NOT an `Option`), and can be freely
-converted to any `Option` value containing a `None`.
-"""
-None
-
-const none = None{Nothing}().data
-Base.convert(::Type{<:Option{T}}, ::None{Nothing}) where T = None{T}()
-
-Base.convert(::Type{Option{T}}, x::Option{T}) where T = x
-
-function Base.convert(::Type{Option{T1}}, x::Option{T2}) where {T1, T2 <: T1}
-    data = x.data
-    if data isa Thing
-        Thing{T1}(data._1)
-    else
-        None{T1}()
-    end
-end
-
-"""
-    Thing(x::T)
-
-Construct a `Thing{T}(x)`, variant of `Option` signifying the presence of a
-value `x`.
-"""
-Thing(x::T) where T = Thing{T}(x)
 
 is_error(x::Result{O, E}) where {O, E} = x.data isa Err{O, E}
-is_none(x::Option{T}) where T = x.data isa None{T}
 
 """
-    expect(x::Union{Result, Option}, s::AbstractString)
+    expect(x::Result, s::AbstractString)
 
 If `x` is of the associated error type, error with message `s`. Else, return
 the contained result type.
 """
 function expect end
 
-function expect(x::Option, s::AbstractString)
-    data = x.data
-    data isa Thing ? data._1 : error(s)
-end
-
 function expect(x::Result, s::AbstractString)
     data = x.data
     data isa Ok ? data._1 : error(s)
 end
-
-"""
-    expect_none(x::Option, s::AbstractString)
-
-If `x` contains a `None`, return `nothing`. Else, throw an error with message `s`.
-"""
-expect_none(x::Option, s::AbstractString) = is_none(x) ? nothing : error(s)
 
 """
     expect_err(x::Result, s::AbstractString)
@@ -246,7 +180,7 @@ end
 @noinline throw_unwrap_err() = error("unwrap on unexpected type")
 
 """
-    unwrap(x::Union{Result, Option})
+    unwrap(x::Result)
 
 If `x` is of the associated error type, throw an error. Else, return the contained
 result type.
@@ -257,18 +191,6 @@ function unwrap(x::Result)
     data = x.data
     data isa Ok ? data._1 : throw_unwrap_err()
 end
-
-function unwrap(x::Option)
-    data = x.data
-    data isa Thing ? data._1 : throw_unwrap_err()
-end
-
-"""
-    unwrap_none(x::Option)
-
-If `x` contains a `None`, return `nothing`. Else, throw an error.
-"""
-unwrap_none(x::Option) = is_none(x) ? nothing : throw_unwrap_err()
 
 """
     unwrap_err(x::Result)
@@ -282,18 +204,13 @@ end
 
 
 """
-    and_then(f, ::Type{T}, x::Union{Option, Result{O, E}})
+    and_then(f, ::Type{T}, x::Result{O, E})
 
 If `is` a result value, apply `f` to `unwrap(x)`, else return the error value. Always returns an `Option{T}` / `Result{T, E}`.
 
 __WARNING__
 If `f(unwrap(x))` is not a `T`, this functions throws an error.
 """
-function and_then(f, ::Type{T}, x::Option) where T
-    data = x.data
-    data isa Thing ? Thing{T}(f(data._1)) : None{T}()
-end
-
 function and_then(f, ::Type{T}, x::Result{O, E}) where {T, O, E}
     data = x.data
     if data isa Ok
@@ -304,14 +221,10 @@ function and_then(f, ::Type{T}, x::Result{O, E}) where {T, O, E}
 end
 
 """
-    unwrap_or(x::Union{Option, Result}, v)
+    unwrap_or(x::Result, v)
 
 If `x` is an error value, return `v`. Else, unwrap `x` and return its content.
 """
-function unwrap_or(x::Option, v)
-    data = x.data
-    data isa Thing ? data._1 : v
-end
 
 function unwrap_or(x::Result, v)
     data = x.data
@@ -326,20 +239,20 @@ Convert an `Option{Option{T}}` to an `Option{T}`.
 # Examples
 
 ```jldoctest
-julia> flatten(Thing(Thing("x")))
-Option{String}: Thing("x")
+julia> flatten(some(some("x")))
+Option{String}: Ok("x")
 
-julia> flatten(Thing(None{Int}()))
-Option{Int64}: None()
+julia> flatten(some(none(Int)))
+Option{Int64}: Err(nothing)
 ```
 """
-flatten(x::Option{Option{T}}) where T = @unwrap_or x None{T}()
+flatten(x::Option{Option{T}}) where T = @unwrap_or x Err{T, Nothing}(nothing)
 
 export Result, Option,
-    Thing, None, none, Ok, Err,
-    is_error, is_none,
-    expect, expect_none, expect_err,
-    unwrap, unwrap_none, unwrap_err,
+    none, some, Ok, Err,
+    is_error,
+    expect, expect_err,
+    unwrap, unwrap_err,
     and_then, unwrap_or, flatten,
     @?, @unwrap_or
 

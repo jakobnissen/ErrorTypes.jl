@@ -1,80 +1,5 @@
 using ErrorTypes
-import ErrorTypes: None
 using Test
-
-@testset "Option" begin
-    # instantiation
-    @test None{Int}() isa Option{Int}
-    @test !(None{Float32}() isa Option{AbstractFloat})
-    @test !(None{Int}() isa None)
-
-    # Conversion from none
-    @test convert(Option{Int}, none) isa Option{Int}
-    @test convert(Option{Some{Nothing}}, none) isa Option{Some{Nothing}}
-    @test_throws MethodError convert(Int, none)
-    @test_throws MethodError convert(Option{String}, "foo")
-
-    # Convert from Option
-    @test convert(Option{Integer}, Thing(1)) isa Option{Integer}
-    @test convert(Option{AbstractString}, None{String}()) isa Option{AbstractString}
-    @test convert(Option{Union{String, Dict}}, Thing("foo")) isa Option{Union{String, Dict}}
-    @test convert(Option{Float64}, None{Float64}()) isa Option{Float64}
-    @test_throws MethodError convert(Option{String}, Thing(1))
-    @test_throws MethodError convert(Option{String}, None{Int}())
-
-    # is_none
-    @test is_none(None{Int}())
-    @test is_none(convert(Option{String}, none))
-    @test !is_none(Thing([0x01, 0x02]))
-    @test !is_none(Thing(nothing))
-    @test !is_none(Thing(none))
-
-    # unwrap
-    @test unwrap(Thing(3.3)) === 3.3
-    @test unwrap(Thing(nothing)) === nothing
-    @test unwrap(Thing(none)) === none
-    @test_throws ErrorException unwrap(None{Int}())
-    @test_throws ErrorException unwrap(convert(Option{AbstractArray}, none))
-
-    # unwrap_or
-    @test unwrap_or(Thing(3.3), 11) === 3.3
-    @test unwrap_or(Thing(missing), nothing) === missing
-    @test unwrap_or(Thing(nothing), 1) === nothing
-    @test unwrap_or(None{Int}(), 5) === 5
-
-    # expect
-    @test expect(Thing("hello"), "err") === "hello"
-    @test expect(Thing([0x01, 0x02]), "foo") == [0x01, 0x02]
-    @test expect(Thing(nothing), "isnothing") === nothing
-    @test_throws ErrorException expect(convert(Option{Integer}, none), "int")
-    @test_throws ErrorException expect(convert(Option{Nothing}, none), "nothing")
-
-    # unwrap_none
-    @test unwrap_none(None{Integer}()) === nothing
-    @test unwrap_none(convert(Option{Bool}, none)) === nothing
-    @test_throws ErrorException unwrap_none(Thing(1))
-    @test_throws ErrorException unwrap_none(Thing{String}("foo"))
-    @test_throws ErrorException unwrap_none(Thing(nothing))
-
-    # expect_none
-    @test expect_none(None{Float64}(), "isfloat") === nothing
-    @test expect_none(convert(Option{Set}, none), "isset") === nothing
-    @test_throws ErrorException expect_none(Thing("hello"), "")
-    @test_throws ErrorException expect_none(Thing(Bool[]), "bar")
-
-    # and_then
-    @test and_then(x -> x + 1, Float64, Thing(0.0)) === Thing(1.0)
-    @test and_then(x -> abs(x) % UInt, UInt, Thing(-55)) === Thing(UInt(55))
-    @test and_then(x -> x + 1, Bool, None{String}()) === None{Bool,}()
-    @test and_then(x -> "foo", Int, None{Int}()) === None{Int}()
-
-    # flatten
-    @test flatten(Thing(Thing(11))) == Thing(11)
-    @test flatten(Thing(Thing("foo"))) == Thing("foo")
-    @test flatten(Thing(None{Float64}())) == None{Float64}()
-    @test flatten(None{Option{Dict{Int, Int}}}()) == None{Dict{Int, Int}}()
-    @test flatten(Thing(Thing(None{Int}()))) == Thing(None{Int}())
-end
 
 @testset "Result" begin
     # instantiation
@@ -153,28 +78,58 @@ end
     @test and_then(x -> "foo", Dict, Err{Int, Int}(1)) === Err{Dict, Int}(1)
 end
 
-@testset "Interaction" begin
+@testset "Option" begin
+    # instantiation
+    @test none(Int) isa Option{Int}
+    @test !(none(Float32) isa Option{AbstractFloat})
+    @test !(none(Int) isa Err)
+
+    # Conversion from none
+    @test convert(Option{Int}, none) isa Option{Int}
+    @test convert(Option{Some{Nothing}}, none) isa Option{Some{Nothing}}
+    @test_throws MethodError convert(Int, none)
+    @test_throws MethodError convert(Option{String}, "foo")
+
+    # Convert from Option
+    @test convert(Option{Integer}, some(1)) isa Option{Integer}
+    @test convert(Option{AbstractString}, none(String)) isa Option{AbstractString}
+    @test convert(Option{Union{String, Dict}}, some("foo")) isa Option{Union{String, Dict}}
+    @test convert(Option{Float64}, none(Float64)) isa Option{Float64}
+    @test_throws MethodError convert(Option{String}, some(1))
+    @test_throws MethodError convert(Option{String}, none(Int))
+
+    # flatten
+    @test flatten(some(some(11))) === some(11)
+    @test flatten(some(some("foo"))) == some("foo")
+    @test flatten(some(none(Float64))) == none(Float64)
+    @test flatten(none(Option{Dict{Int, Int}})) == none(Dict{Int, Int})
+    @test flatten(some(some(none(Int)))) == some(none(Int))
+    @test_throws MethodError flatten(some(Err{Int, UInt}(UInt(1))))
+    @test_throws MethodError flatten(Ok{Option{Int}, Missing}(some(5)))
+end
+
+@testset "Result/Option conversion" begin
     # Construct Option from Result
-    @test Option(Ok{String, Int}("foo")) == Thing("foo")
-    @test Option(Err{String, Int}(15)) == None{String}()
+    @test Option(Ok{String, Int}("foo")) == some("foo")
+    @test Option(Err{String, Int}(15)) == none(String)
 
     # Construct Result from Option
-    @test Result(None{String}(), 0x01) == Err{String, UInt8}(0x01)
-    @test Result(Thing(0x1234), []) == Ok{UInt16, Vector{Any}}(0x1234)
-    @test Result(Thing(1), 2) == Ok{Int, Int}(1)
+    @test Result(none(String), 0x01) == Err{String, UInt8}(0x01)
+    @test Result(some(0x1234), []) == Ok{UInt16, Vector{Any}}(0x1234)
+    @test Result(some(1), 2) == Ok{Int, Int}(1)
 end
 
 @testset "@?" begin
     # Generic Option usage
     function testf1(x)::Option{typeof(x)}
-        iszero(x) ? none : Thing(x + one(x))
+        iszero(x) ? none : some(x + one(x))
     end
 
     function testf2(x)::Option{String}
-        Thing(string(@? testf1(x)))
+        some(string(@? testf1(x)))
     end
 
-    @test is_none(testf2(0))
+    @test is_error(testf2(0))
     @test unwrap(testf2(1)) == "2"
 
     # Generic Result usage
@@ -202,7 +157,7 @@ end
 end
 
 @testset "@unwrap_or" begin
-    not_zero(x::Int)::Option{Int} = iszero(x) ? none : Thing(1 + x)
+    not_zero(x::Int)::Option{Int} = iszero(x) ? none : some(1 + x)
 
     function my_sum(f, it)
         sum = 0
@@ -224,4 +179,4 @@ end
 
     @test_throws TypeError @unwrap_or (1 + 1) "foo"
 end 
-    
+
