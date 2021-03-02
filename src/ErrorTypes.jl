@@ -58,10 +58,12 @@ julia> f(some(1.0)), f(none(Int))
 """
 macro var"?"(expr)
     sym = gensym()
+    sym2 = gensym()
     quote
         $(sym) = $(esc(expr))
         isa($sym, Result) || throw(TypeError(Symbol("@?"), "", Result, $sym))
-        ($sym).data isa Ok ? ($sym).data._1 : return Err($(sym).data._1)
+        $(sym2) = $(sym).data
+        ($sym2) isa Ok ? ($sym2)._1 : return Err($(sym2)._1)
     end
 end
 
@@ -91,10 +93,12 @@ julia> skip_inv_sum([2,1,0,1,2])
 """
 macro unwrap_or(expr, exec)
     sym = gensym()
+    sym2 = gensym()
     quote
         $(sym) = $(esc(expr))
         isa($sym, Result) || throw(TypeError(Symbol("@unwrap_or"), "", Result, $sym))
-        isa($(sym).data, Err) ? $(esc(exec)) : $(sym).data._1
+        $(sym2) = $(sym).data
+        isa($(sym2), Err) ? $(esc(exec)) : $(sym2)._1
     end
 end
 
