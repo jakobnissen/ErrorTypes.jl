@@ -235,10 +235,17 @@ Option{Int64}: Err(nothing)
 """
 flatten(x::Option{Option{T}}) where T = unwrap_or(x, none(T))
 
+"""
+    base(x::Option{T})
+
+Convert an `Option{T}` to a `Union{Some{T}, Nothing}`.
+"""
+base(x::Option{T}) where T = Some(@unwrap_or x (return nothing))
+
 export Result, Option,
     none, some, Ok, Err,
     is_error, expect, expect_err, unwrap, unwrap_err,
-    and_then, unwrap_or, flatten,
+    and_then, unwrap_or, flatten, base,
     @?, @unwrap_or
 
 end # module

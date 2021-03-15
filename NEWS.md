@@ -1,4 +1,11 @@
 ## Release 0.3
+
+__Breaking changes__
+
+__New features__
+* New function: `base(::Option{T})`. Converts an `Option{T}` into a `Union{Some{T}, Nothing}`.
+
+## Release 0.3
 __Breaking changes__
 
 * `Option{T}` has been revamped and is now an alias of `Result{T, Nothing}`. As a consequence, most code that used `Option` is now broken.
