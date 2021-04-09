@@ -6,8 +6,8 @@ using Test
     @test Ok{Bool, String}(true) isa Result{Bool,String}
     @test Ok{Bool, String}(false).data isa Ok{Bool,String}
     @test Err{Int, Int}(15) isa Result{Int, Int}
-    @test_throws TypeError Err{Float64, Int}(1.0)
-    @test_throws TypeError Ok{Bool, Int}(5)
+    @test_throws MethodError Err{Float64, Int}(1.0)
+    @test_throws MethodError Ok{Bool, Int}(5)
     
     # conversion
     @test convert(Result{String, Int}, Ok("foo")) isa Result{String, Int}
