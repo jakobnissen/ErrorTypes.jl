@@ -45,7 +45,7 @@ end
 
 Propagate a `Result` with `Err` value to the outer function.
 Evaluate `expr`, which should return a `Result`. If it contains an `Ok` value `x`,
-evaluate to the unwrapped value `x`. Else, evaluates to `return Err(x)`t.
+evaluate to the unwrapped value `x`. Else, evaluates to `return Err(x)`.
 
 # Example
 
@@ -57,13 +57,11 @@ julia> f(some(1.0)), f(none(Int))
 ```
 """
 macro var"?"(expr)
-    sym = gensym()
-    sym2 = gensym()
     quote
-        $(sym) = $(esc(expr))
-        isa($sym, Result) || throw(TypeError(Symbol("@?"), "", Result, $sym))
-        $(sym2) = $(sym).data
-        ($sym2) isa Ok ? ($sym2)._1 : return Err($(sym2)._1)
+        local res = $(esc(expr))
+        isa(res, Result) || throw(TypeError(Symbol("@?"), "", Result, res))
+        local data = res.data
+        data isa Ok ? data._1 : return Err(data._1)
     end
 end
 
@@ -92,13 +90,11 @@ julia> skip_inv_sum([2,1,0,1,2])
 ```
 """
 macro unwrap_or(expr, exec)
-    sym = gensym()
-    sym2 = gensym()
     quote
-        $(sym) = $(esc(expr))
-        isa($sym, Result) || throw(TypeError(Symbol("@unwrap_or"), "", Result, $sym))
-        $(sym2) = $(sym).data
-        isa($(sym2), Err) ? $(esc(exec)) : $(sym2)._1
+        local res = $(esc(expr))
+        isa(res, Result) || throw(TypeError(Symbol("@unwrap_or"), "", Result, res))
+        local data = res.data
+        isa(data, Err) ? $(esc(exec)) : data._1
     end
 end
 

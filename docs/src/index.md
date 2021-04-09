@@ -28,7 +28,7 @@ See also: [Why use ErrorTypes?](@ref)
 
 __Comparisons to other packages__
 
-The idea behind this package is well known and used in other languages, e.g. Rust and the functional languages (Clojure, Haskell etc). It is also implemented in the Julia packages `Expect` and `ResultTypes`, and to some extend `MLStyle`. Compared to these packages, ErrorTypes offer:
+The idea behind this package is well known and used in other languages, e.g. Rust and the functional languages (Clojure, Haskell etc). It is also implemented in the Julia packages `Expect` and `ResultTypes`, and to some extent `MLStyle`. Compared to these packages, ErrorTypes offer:
 
 * Efficiency: All ErrorTypes methods and types should be maximally efficient. For example, an `Option{T}` is as lightweight as a `Union{T, Nothing}`, and manipulation of the `Option` is as efficient as a `===` check against `nothing`.
 * Increased comfort. The main disadvantage of using these packages are the increased friction in development. ErrorTypes provides more quality-of-life functionality for working with error types than `Expect` and `ResultTypes`, for example the simple `Option` type.
