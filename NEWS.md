@@ -1,6 +1,4 @@
-## Release 0.3
-
-__Breaking changes__
+## Release 0.3.1
 
 __New features__
 * New function: `base(::Option{T})`. Converts an `Option{T}` into a `Union{Some{T}, Nothing}`.
