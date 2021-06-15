@@ -1,18 +1,74 @@
-# Note: This module is full of code like:
-# if x.data isa Ok
-#     x.data._1
-# else
-#
-# this is so the compiler won't typecheck inside the if blocks.
-# that in turns leads to more effective code.
-
 module ErrorTypes
 
-using SumTypes
+struct Unsafe end
+const unsafe = Unsafe()
 
-@sum_type Result{O, E} begin
-    Ok{O, E}(::O)
-    Err{O, E}(::E)
+"""
+    Ok{T}
+
+The success state of a `Result{T, E}`, carrying an object of type `T`.
+For convenience, `Ok(x)` creates a dummy value that can be converted to the
+appropriate `Result type`.
+"""
+struct Ok{T}
+    x::T
+    Ok{T}(::Unsafe, x::T) where T = new{T}(x)
+end
+
+"""
+    Err
+
+The error state of a `Result{O, E}`, carrying an object of type `E`.
+For convenience, `Err(x)` creates a dummy value that can be converted to the
+appropriate `Result type`.
+"""
+struct Err{E}
+    x::E
+    Err{E}(::Unsafe, x::E) where E = new{E}(x)
+end
+
+struct ResultConstructor{T, K <: Union{Ok, Err}}
+    x::T
+end
+
+Ok{T}(x::T2) where {T, T2 <: T} = ResultConstructor{T, Ok}(convert(T, x))
+Err{T}(x::T2) where {T, T2 <: T} = ResultConstructor{T, Err}(convert(T, x))
+Ok(x::T) where T = Ok{T}(x)
+Err(x::T) where T = Err{T}(x)
+
+"""
+    Result{O, E}
+
+A sum type of either `Ok{O}` or `Err{E}`. Used as return value of functions that
+can error with an informative error object of type `E`.
+"""
+struct Result{O, E}
+    x::Union{Ok{O}, Err{E}}
+end
+
+function Result{T1, E1}(x::Result{T2, E2}) where {T1, T2 <: T1, E1, E2 <: E1}
+    inner = x.x
+    if inner isa Err
+        Result{T1, E1}(Err{E1}(unsafe, inner.x))
+    else
+        Result{T1, E1}(Ok{T1}(unsafe, inner.x))
+    end
+end
+
+function Base.convert(::Type{Result{T1, E1}}, x::Result{T2, E2}) where {T1, T2 <: T1, E1, E2 <: E1}
+    Result{T1, E1}(x)
+end
+
+# Bizarrely, we need this method to avoid recursion when creating a Result
+Base.convert(::Type{Result{T, E}}, x::Result{T, E}) where {T, E} = x
+
+Result{O, E}(x::ResultConstructor{O2, Ok}) where {O, E, O2 <: O} = Result{O, E}(Ok{O}(unsafe, x.x))
+Result{O, E}(x::ResultConstructor{E2, Err}) where {O, E, E2 <: E} = Result{O, E}(Err{E}(unsafe, x.x))
+Result{O, Nothing}(x::ResultConstructor{E, Err}) where {O, E} = Result{O, Nothing}(Err{Nothing}(unsafe, nothing))
+Base.convert(::Type{T}, x::ResultConstructor) where {T <: Result} = T(x)
+
+function Base.show(io::IO, x::Result)
+    print(io, typeof(x), '(', Base.typename(typeof(x.x)).name, '(', repr(x.x.x), "))")
 end
 
 """
@@ -22,22 +78,37 @@ Alias for `Result{T, Nothing}`
 """
 const Option{T} = Result{T, Nothing}
 
-"""
-    Result{O, E}
+is_error(x::Result) = x.x isa Err
 
-A sum type of either `Ok{O}` or `Err{E}`. Used as return value of functions that
-can error with an informative error object of type `E`.
-"""
-Result
-
-function Option(x::Result{O, E}) where {O, E}
-    data = x.data
-    isa(data, Err) ? Err{O, Nothing}(nothing) : Ok{O, Nothing}(data._1)
+Option(x::Result{T, E}) where {T, E} = is_error(x) ? none(T) : Option{T}(x.x)
+function Result(x::Option{T}, v::E) where {T, E}
+    data = x.x
+    inner = if x.x isa Err
+        Err{E}(unsafe, v)
+    else
+        x.x
+    end
+    return Result{T, E}(inner)
 end
 
-function Result(x::Option{T}, e::E) where {T, E}
-    data = x.data
-    isa(data, Err) ? Err{T, E}(e) : Ok{T, E}(data._1)
+some(x::T) where T = Option{T}(Ok{T}(unsafe, x))
+
+const none = ResultConstructor{Nothing, Err}(nothing)
+none(x::Type{T}) where T = Option{T}(Err{Nothing}(unsafe, nothing))
+
+function Base.show(io::IO, x::Option{T}) where T
+    inner = x.x
+    if inner isa Err
+        print(io, "none(", T, ')')
+    else
+        # If the inner value is exactly T, elide printing it for brevity.
+        value = inner.x
+        if typeof(value) === T
+            print(io, "some(", repr(x.x.x), ')')
+        else
+            print(io, "some{", T, "}(", repr(x.x.x), ')')
+        end
+    end
 end
 
 """
@@ -59,9 +130,9 @@ julia> f(some(1.0)), f(none(Int))
 macro var"?"(expr)
     quote
         local res = $(esc(expr))
-        isa(res, Result) || throw(TypeError(Symbol("@?"), "", Result, res))
-        local data = res.data
-        data isa Ok ? data._1 : return Err(data._1)
+        isa(res, Result) || throw(TypeError(Symbol("@?"), Result, res))
+        local data = res.x
+        data isa Ok ? data.x : return Err(data.x)
     end
 end
 
@@ -92,80 +163,10 @@ julia> skip_inv_sum([2,1,0,1,2])
 macro unwrap_or(expr, exec)
     quote
         local res = $(esc(expr))
-        isa(res, Result) || throw(TypeError(Symbol("@unwrap_or"), "", Result, res))
-        local data = res.data
-        isa(data, Err) ? $(esc(exec)) : data._1
+        isa(res, Result) || throw(TypeError(Symbol("@unwrap_or"), Result, res))
+        local data = res.x
+        data isa Ok ? data.x : $(esc(exec))
     end
-end
-
-struct ResultConstructor{R,T}
-    x::T
-end
-
-"""
-    Ok
-
-The success state of a `Result{O, E}`, carrying an object of type `O`.
-For convenience, `Ok(x)` creates a dummy value that can be converted to the
-appropriate `Result type`.
-"""
-Ok(x) = ResultConstructor{Ok,typeof(x)}(x)
-
-"""
-    Err
-
-The error state of a `Result{O, E}`, carrying an object of type `E`.
-For convenience, `Err(x)` creates a dummy value that can be converted to the
-appropriate `Result type`.
-"""
-Err(x) = ResultConstructor{Err,typeof(x)}(x)
-
-
-function Base.convert(::Type{Result{O, E}}, x::ResultConstructor{Ok, O2}
-) where {O, O2 <: O, E}
-    Ok{O, E}(x.x)
-end
-
-function Base.convert(::Type{Result{O, E}}, x::ResultConstructor{Err, E2}
-) where {O, E, E2 <: E}
-    Err{O, E}(x.x)
-end
-
-Base.convert(::Type{Result{O, E}}, x::Result{O, E}) where {O, E} = x
-
-# Convert an error to another error if the former is a subtype of the other
-function Base.convert(::Type{Result{O1, E1}}, x::Result{O2, E2}
-) where {O1, E1, O2 <: O1, E2 <: E1}
-    data = x.data
-    data isa Err ? Err{O1, E1}(data._1) : Ok{O1, E1}(data._1)
-end
-
-const none = Err(nothing)
-none(::Type{T}) where T = Err{T, Nothing}(nothing)
-some(x::T) where T = Ok{T, Nothing}(x)
-
-is_error(x::Result{O, E}) where {O, E} = x.data isa Err{O, E}
-
-"""
-    expect(x::Result, s::AbstractString)
-
-If `x` is of the associated error type, error with message `s`. Else, return
-the contained result type.
-"""
-function expect(x::Result, s::AbstractString)
-    data = x.data
-    data isa Ok ? data._1 : error(s)
-end
-
-"""
-    expect_err(x::Result, s::AbstractString)
-
-If `x` contains an `Err`, return the content of the `Err`. Else, throw an error
-with message `s`.
-"""
-function expect_err(x::Result, s::AbstractString)
-    data = x.data
-    data isa Err ? data._1 : error(s)
 end
 
 @noinline throw_unwrap_err() = error("unwrap on unexpected type")
@@ -177,8 +178,8 @@ If `x` is of the associated error type, throw an error. Else, return the contain
 result type.
 """
 function unwrap(x::Result)
-    data = x.data
-    data isa Ok ? data._1 : throw_unwrap_err()
+    data = x.x
+    data isa Ok ? data.x : throw_unwrap_err()
 end
 
 """
@@ -187,21 +188,47 @@ end
 If `x` contains an `Err`, return the content of the `Err`. Else, throw an error.
 """
 function unwrap_err(x::Result)
-    data = x.data
-    data isa Err ? data._1 : throw_unwrap_err()
+    data = x.x
+    data isa Err ? data.x : throw_unwrap_err()
+end
+
+"""
+    expect(x::Result, s::AbstractString)
+
+If `x` is of the associated error type, error with message `s`. Else, return
+the contained result type.
+"""
+function expect(x::Result, s::AbstractString)
+    data = x.x
+    data isa Ok ? data.x : error(s)
+end
+
+"""
+    expect_err(x::Result, s::AbstractString)
+
+If `x` contains an `Err`, return the content of the `Err`. Else, throw an error
+with message `s`.
+"""
+function expect_err(x::Result, s::AbstractString)
+    data = x.x
+    data isa Err ? data.x : error(s)
 end
 
 """
     and_then(f, ::Type{T}, x::Result{O, E})
 
-If `is` a result value, apply `f` to `unwrap(x)`, else return the error value. Always returns an `Result{T, E}`.
+If `is` a result value, apply `f` to `unwrap(x)`, else return the error value. Always returns a `Result{T, E}`.
 
 __WARNING__
 If `f(unwrap(x))` is not a `T`, this functions throws an error.
 """
-function and_then(f, ::Type{T}, x::Result{O, E}) where {T, O, E}
-    data = x.data
-    data isa Ok ? Ok{T, E}(f(data._1)) : Err{T, E}(data._1)
+function and_then(f, ::Type{T}, x::Result{O, E})::Result{T, E} where {T, O, E}
+    data = x.x
+    if data isa Ok
+        Result{T, E}(Ok{T}(unsafe, f(data.x)::T))
+    else
+        Result{T, E}(Err{E}(unsafe, data.x))
+    end
 end
 
 """
@@ -209,10 +236,7 @@ end
 
 If `x` is an error value, return `v`. Else, unwrap `x` and return its content.
 """
-function unwrap_or(x::Result, v)
-    data = x.data
-    data isa Ok ? data._1 : v
-end
+unwrap_or(x::Result, v) = @unwrap_or x v
 
 """
     flatten(x::Option{Option{T}})
@@ -238,10 +262,10 @@ Convert an `Option{T}` to a `Union{Some{T}, Nothing}`.
 """
 base(x::Option{T}) where T = Some(@unwrap_or x (return nothing))
 
-export Result, Option,
-    none, some, Ok, Err,
-    is_error, expect, expect_err, unwrap, unwrap_err,
+export Ok, Err, Result, Option,
+    is_error, some, none,
+    unwrap, unwrap_err, expect, expect_err,
     and_then, unwrap_or, flatten, base,
     @?, @unwrap_or
 
-end # module
+end
