@@ -62,9 +62,14 @@ end
 # Bizarrely, we need this method to avoid recursion when creating a Result
 Base.convert(::Type{Result{T, E}}, x::Result{T, E}) where {T, E} = x
 
+# Strict supertype accepted
 Result{O, E}(x::ResultConstructor{O2, Ok}) where {O, E, O2 <: O} = Result{O, E}(Ok{O}(unsafe, x.x))
-Result{O, E}(x::ResultConstructor{E2, Err}) where {O, E, E2 <: E} = Result{O, E}(Err{E}(unsafe, x.x))
-Result{O, Nothing}(x::ResultConstructor{E, Err}) where {O, E} = Result{O, Nothing}(Err{Nothing}(unsafe, nothing))
+
+# We have <:Err here to also cover ResultConstructor{E2, Union{}} propagated with @?
+Result{O, E}(x::ResultConstructor{E2, <:Err}) where {O, E, E2 <: E} = Result{O, E}(Err{E}(unsafe, x.x))
+
+# ResultConstructor propagated with @? can convert to any Option
+Result{O, Nothing}(x::ResultConstructor{E, Union{}}) where {O, E} = Result{O, Nothing}(Err{Nothing}(unsafe, nothing))
 Base.convert(::Type{T}, x::ResultConstructor) where {T <: Result} = T(x)
 
 function Base.show(io::IO, x::Result)
@@ -132,7 +137,7 @@ macro var"?"(expr)
         local res = $(esc(expr))
         isa(res, Result) || throw(TypeError(Symbol("@?"), Result, res))
         local data = res.x
-        data isa Ok ? data.x : return Err(data.x)
+        data isa Ok ? data.x : return ResultConstructor{typeof(data.x), Union{}}(data.x)
     end
 end
 
