@@ -1,3 +1,15 @@
+## Release 0.4
+__Breaking changes__
+ErrorTypes is no longer based on SumTypes. SumTypes tries to solve a more general problem, and as such requires more compiler tricks. That both obfuscated ErrorTypes' behaviour and made it a more heavy dependency than it needed to be.
+
+* The constructors `Err{T, E}(x)` and `Ok{T, E}(x)` have been removed. You should construct `Result` types like this: `Result{T, E}(Err(x))`.
+
+Several internal types and representations have also changed.
+
+__New features__
+* You can now use the syntax `Option{T}(some(x))` to create a result-valued `Option` of an abstract type, e.g. `Option{Integer}(some(1))`.
+* The `@?` macro now propagates more easily, and can propagate an error value of type `Result` to an `Option`.
+
 ## Release 0.3.1
 
 __New features__

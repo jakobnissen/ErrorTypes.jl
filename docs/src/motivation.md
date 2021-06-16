@@ -5,7 +5,7 @@ Some people think the source of programming bug are programs who misbehave by no
 
 If we want better programs, it is pointless to wait around for better humans to arrive. We can't excuse the existence of bugs with the existence human fallibility, because we will never get rid of that. Instead, we must design systems to contain and mitigate human error. Programming languages are such systems.
 
-One source of such error is _fallible functions_. Some functions are natually fallible. Consider, for example, the `maximum` function from Julia's Base. This function will fail on empty collections. With an edge case like this, some human is bound to forget it at some point, and produce fragile software as a result. The behaviour of `maximum` is a bug waiting to happen.
+One source of such error is _fallible functions_. Some functions are naturally fallible. Consider, for example, the `maximum` function from Julia's Base. This function will fail on empty collections. With an edge case like this, some human is bound to forget it at some point, and produce fragile software as a result. The behaviour of `maximum` is a bug waiting to happen.
 
 However, because we *know* there is a potential bug hiding here, we have the ability to act. We can use our programming language to _force_ us to remember the edge case. We can, for example, encode the edge case into the type system such that any code that forgets the edge case simply won't compile.
 

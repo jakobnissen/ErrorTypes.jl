@@ -27,7 +27,7 @@ If you want an abstractly parameterized `Option`, you can construct it directly 
 
 ```
 julia> Option{Integer}(some(1))
-some{Integer}(1)
+Option{Integer}(some(1))
 ```
 
 #### ResultConstructor
@@ -41,7 +41,7 @@ julia> Ok(1)
 ErrorTypes.ResultConstructor{Int64, Ok}(1)
 ```
 
-The only purpose of `ResultConstructor` is to create `Result` with the correct parameters, and to allow conversions of carefully selected types. The user does not need to think much about `ResultConstructor`, but if `ErrorTypes` is abused, this type can show up in the stacktraces.
+The only purpose of `ResultConstructor` is to create `Result`s with the correct parameters, and to allow conversions of carefully selected types. The user does not need to think much about `ResultConstructor`, but if `ErrorTypes` is abused, this type can show up in the stacktraces.
 
 `none` by itself is a constant for `ErrorTypes.ResultConstructor{Nothing, Err}(nothing)` - we will come back to why this is particularly convenient.
 
@@ -58,7 +58,7 @@ And not this:
 invert(x::Integer) = iszero(x) ? none(Float64) : some(1/x)
 ```
 
-Note in the first example that `none` can be returned, which was an instance of `ResultConstructor`. One purpose of `ResultConstructor` is that annotating the return type will cause this generic `none` to automatically convert to `Option{Float64}`. Similarly, one can also use a typeassert to ease in the construction of `Result`:
+Note in the first example that `none` can be returned, which was a generic instance of `ResultConstructor`. One purpose of `ResultConstructor` is that annotating the return type will cause this generic `none` to automatically convert to `Option{Float64}`. Similarly, one can also use a typeassert to ease in the construction of `Result`:
 
 ```
 function get_length(x)::Result{Int, Base.IteratorSize}
@@ -80,7 +80,7 @@ Error types can only convert to each other in certain circumstances. This is int
 * A `ResultConstructor{T, Ok}` can be converted to `Result{T2, E}` if `T <: T2`.
 * A `ResultConstructor{E, Err}` can be converted to `Result{T, E2}` if `E <: E2`.
 
-The first rule merely state that a `Result` can be converted to another `Result` if both the success parameter (`Ok{T}`) and the error parameter (`Err{E}`) error types are a strict supertype. It is intentionally NOT possible to e.g. convert a `Result{Int, String}` containing an `Ok` to a `Result{Int, Int}`, even if the `Ok` value contains an `Int` which is allowed in both of the `Result` types. The reason for this is that if it was allowed, whether or not conversions threw errors would depend on the _value_ of an error type, not the type. This type-unstable behaviour would defeat idea behind this package, namely to present edge cases as types, not values.
+The first rule merely state that a `Result` can be converted to another `Result` if both the success parameter (`Ok{T}`) and the error parameter (`Err{E}`) error types are a supertype. It is intentionally NOT possible to e.g. convert a `Result{Int, String}` containing an `Ok` to a `Result{Int, Int}`, even if the `Ok` value contains an `Int` which is allowed in both of the `Result` types. The reason for this is that if it was allowed, whether or not conversions threw errors would depend on the _value_ of an error type, not the type. This type-unstable behaviour would defeat idea behind this package, namely to present edge cases as types, not values.
 
 The next two rules state that `ResultConstructors` have relaxed this requirement, and so a `ResultConstructors` constructed from an `Ok` or `Err` can be converted if only the `Ok{T}` or the `Err{E}` parameter, respectively, is a supertype, not necessarily both parameters.
 
