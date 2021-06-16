@@ -105,6 +105,13 @@ end
     @test flatten(some(some(none(Int)))) == some(none(Int))
     @test_throws MethodError flatten(some(Result{Int, UInt}(Err(UInt(1)))))
     @test_throws MethodError flatten(Result{Option{Int}, Missing}(Ok(some(5))))
+
+    # base
+    @test base(some(11)) == Some(11)
+    @test base(none(AbstractString)) === nothing
+    @test base(some(some(0xf1))) == Some(some(0xf1))
+    @test_throws MethodError base(Result{String, Vector}(Err([1,2])))
+    @test_throws MethodError base(Result{Int, Int}(Ok(1)))
 end
 
 @testset "Result/Option conversion" begin
@@ -153,6 +160,13 @@ end
     @test unwrap(testf4(5)) === 6.5
 
     @test_throws TypeError @? 1 + 1
+
+    # Convert from Result to Option
+    testf5(x::Int)::Result{Int, Int} = iszero(x) ? Err(x) : Ok(x + 1)
+    testf6(x)::Option{Int} = some(@?(testf5(x)) + 2)
+
+    @test testf6(0) == none(Int)
+    @test testf6(1) == some(4)
 end
 
 @testset "@unwrap_or" begin
@@ -177,5 +191,20 @@ end
     @test my_sum(not_zero_two, [1,2,0,2,0,1]) === 3.0
 
     @test_throws TypeError @unwrap_or (1 + 1) "foo"
-end 
+end
+
+# I only have this to get 100% code coverage and make sure printing doesn't error
+# I don't actually really test what it printed
+@testset "printing" begin
+    function test_printing(x)
+        io = IOBuffer()
+        show(io, x)
+        return length(take!(io))
+    end
+    @test test_printing(Result{Int, Bool}(Err(false))) > 5
+    @test test_printing(some(1)) > 5
+    @test test_printing(none(AbstractString)) > 5
+    @test test_printing(some(1)) < test_printing(Option{Integer}(some(1)))
+end
+        
 

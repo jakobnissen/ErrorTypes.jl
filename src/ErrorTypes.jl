@@ -60,7 +60,7 @@ function Base.convert(::Type{Result{T1, E1}}, x::Result{T2, E2}) where {T1, T2 <
 end
 
 # Bizarrely, we need this method to avoid recursion when creating a Result
-Base.convert(::Type{Result{T, E}}, x::Result{T, E}) where {T, E} = x
+Base.convert(::Type{T}, x::T) where {T <: Result} = x
 
 # Strict supertype accepted
 Result{O, E}(x::ResultConstructor{O2, Ok}) where {O, E, O2 <: O} = Result{O, E}(Ok{O}(unsafe, x.x))
@@ -111,7 +111,7 @@ function Base.show(io::IO, x::Option{T}) where T
         if typeof(value) === T
             print(io, "some(", repr(x.x.x), ')')
         else
-            print(io, "some{", T, "}(", repr(x.x.x), ')')
+            print(io, "Option{", T, "}(some(", repr(x.x.x), "))")
         end
     end
 end
@@ -129,7 +129,7 @@ evaluate to the unwrapped value `x`. Else, evaluates to `return Err(x)`.
 julia> (f(x::Option{T})::Option{T}) where T = Ok(@?(x) + one(T));
 
 julia> f(some(1.0)), f(none(Int))
-(Option{Float64}: Ok(2.0), Option{Int64}: Err(nothing))
+(some(2.0), none(Int64))
 ```
 """
 macro var"?"(expr)
@@ -230,7 +230,7 @@ If `f(unwrap(x))` is not a `T`, this functions throws an error.
 function and_then(f, ::Type{T}, x::Result{O, E})::Result{T, E} where {T, O, E}
     data = x.x
     if data isa Ok
-        Result{T, E}(Ok{T}(unsafe, f(data.x)::T))
+        Result{T, E}(Ok{T}(unsafe, f(data.x)))
     else
         Result{T, E}(Err{E}(unsafe, data.x))
     end
@@ -252,10 +252,10 @@ Convert an `Option{Option{T}}` to an `Option{T}`.
 
 ```jldoctest
 julia> flatten(some(some("x")))
-Option{String}: Ok("x")
+some("x")
 
 julia> flatten(some(none(Int)))
-Option{Int64}: Err(nothing)
+none(Int)
 ```
 """
 flatten(x::Option{Option{T}}) where T = unwrap_or(x, none(T))
