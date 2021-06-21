@@ -1,3 +1,11 @@
+## Release 0.5.0
+
+__Breaking changes__
+* Renamed `unwrap_err` and `expect_err` to `unwrap_error` and `expect_error`.
+
+__New features__
+* `@unwrap_error_or` and `unwrap_error_or` mirrors their non-error equivalents.
+
 ## Release 0.4
 __Breaking changes__
 ErrorTypes is no longer based on SumTypes. SumTypes tries to solve a more general problem, and as such requires more compiler tricks. That both obfuscated ErrorTypes' behaviour and made it a more heavy dependency than it needed to be.

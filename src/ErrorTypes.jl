@@ -48,11 +48,7 @@ end
 
 function Result{T1, E1}(x::Result{T2, E2}) where {T1, T2 <: T1, E1, E2 <: E1}
     inner = x.x
-    if inner isa Err
-        Result{T1, E1}(Err{E1}(unsafe, inner.x))
-    else
-        Result{T1, E1}(Ok{T1}(unsafe, inner.x))
-    end
+    return Result{T1, E1}(inner isa Err ? Err(inner.x) : Ok(inner.x))
 end
 
 function Base.convert(::Type{Result{T1, E1}}, x::Result{T2, E2}) where {T1, T2 <: T1, E1, E2 <: E1}
@@ -88,12 +84,7 @@ is_error(x::Result) = x.x isa Err
 Option(x::Result{T, E}) where {T, E} = is_error(x) ? none(T) : Option{T}(x.x)
 function Result(x::Option{T}, v::E) where {T, E}
     data = x.x
-    inner = if x.x isa Err
-        Err{E}(unsafe, v)
-    else
-        x.x
-    end
-    return Result{T, E}(inner)
+    return Result{T, E}(data isa Err ? Err(v) : x.x)
 end
 
 some(x::T) where T = Option{T}(Ok{T}(unsafe, x))
@@ -141,6 +132,15 @@ macro var"?"(expr)
     end
 end
 
+macro unwrap_t_or(expr, T, exec)
+    quote
+        local res = $(esc(expr))
+        isa(res, Result) || throw(TypeError(Symbol("@unwrap_or"), Result, res))
+        local data = res.x
+        data isa $(esc(T)) ? data.x : $(esc(exec))
+    end
+end
+
 # Note: jldoctests crashes on this ATM, even if it works correctly.
 """
     @unwrap_or(expr, exec)
@@ -166,12 +166,16 @@ julia> skip_inv_sum([2,1,0,1,2])
 ```
 """
 macro unwrap_or(expr, exec)
-    quote
-        local res = $(esc(expr))
-        isa(res, Result) || throw(TypeError(Symbol("@unwrap_or"), Result, res))
-        local data = res.x
-        data isa Ok ? data.x : $(esc(exec))
-    end
+    return :(@unwrap_t_or $(esc(expr)) Ok $(esc(exec)))
+end
+
+"""
+    @unwrap_error_or(expr, exec)
+
+Same as `@unwrap_or`, but unwraps errors.
+"""
+macro unwrap_error_or(expr, exec)
+    return :(@unwrap_t_or $(esc(expr)) Err $(esc(exec)))
 end
 
 @noinline throw_unwrap_err() = error("unwrap on unexpected type")
@@ -182,20 +186,14 @@ end
 If `x` is of the associated error type, throw an error. Else, return the contained
 result type.
 """
-function unwrap(x::Result)
-    data = x.x
-    data isa Ok ? data.x : throw_unwrap_err()
-end
+unwrap(x::Result) = @unwrap_or x throw_unwrap_err()
 
 """
-    unwrap_err(x::Result)
+    unwrap_error(x::Result)
 
 If `x` contains an `Err`, return the content of the `Err`. Else, throw an error.
 """
-function unwrap_err(x::Result)
-    data = x.x
-    data isa Err ? data.x : throw_unwrap_err()
-end
+unwrap_error(x::Result) = @unwrap_error_or x throw_unwrap_err()
 
 """
     expect(x::Result, s::AbstractString)
@@ -203,21 +201,15 @@ end
 If `x` is of the associated error type, error with message `s`. Else, return
 the contained result type.
 """
-function expect(x::Result, s::AbstractString)
-    data = x.x
-    data isa Ok ? data.x : error(s)
-end
+expect(x::Result, s::AbstractString) = @unwrap_or x error(s)
 
 """
-    expect_err(x::Result, s::AbstractString)
+    expect_error(x::Result, s::AbstractString)
 
 If `x` contains an `Err`, return the content of the `Err`. Else, throw an error
 with message `s`.
 """
-function expect_err(x::Result, s::AbstractString)
-    data = x.x
-    data isa Err ? data.x : error(s)
-end
+expect_error(x::Result, s::AbstractString) = @unwrap_error_or x error(s)
 
 """
     and_then(f, ::Type{T}, x::Result{O, E})
@@ -229,11 +221,7 @@ If `f(unwrap(x))` is not a `T`, this functions throws an error.
 """
 function and_then(f, ::Type{T}, x::Result{O, E})::Result{T, E} where {T, O, E}
     data = x.x
-    if data isa Ok
-        Result{T, E}(Ok{T}(unsafe, f(data.x)))
-    else
-        Result{T, E}(Err{E}(unsafe, data.x))
-    end
+    Result{T, E}(data isa Ok ? Ok(f(data.x)) : Err(data.x))
 end
 
 """
@@ -242,6 +230,14 @@ end
 If `x` is an error value, return `v`. Else, unwrap `x` and return its content.
 """
 unwrap_or(x::Result, v) = @unwrap_or x v
+
+
+"""
+    unwrap_error_or(x::Result, v)
+
+Like `unwrap_or`, but unwraps an error.
+"""
+unwrap_error_or(x::Result, v) = @unwrap_error_or x v
 
 """
     flatten(x::Option{Option{T}})
@@ -269,8 +265,8 @@ base(x::Option{T}) where T = Some(@unwrap_or x (return nothing))
 
 export Ok, Err, Result, Option,
     is_error, some, none,
-    unwrap, unwrap_err, expect, expect_err,
-    and_then, unwrap_or, flatten, base,
-    @?, @unwrap_or
+    unwrap, unwrap_error, expect, expect_error,
+    and_then, unwrap_or, unwrap_error_or, flatten, base,
+    @?, @unwrap_or, @unwrap_error_or
 
 end

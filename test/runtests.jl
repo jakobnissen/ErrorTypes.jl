@@ -47,10 +47,17 @@ using Test
     @test_throws ErrorException unwrap(Result{Int, String}(Err("foo")))
     @test_throws ErrorException unwrap(Result{Bool, Bool}(Err(true)))
 
+    # unwrap_or
     @test unwrap_or(Result{Int, Float64}(Ok(5)), 11) === 5
     @test unwrap_or(Result{Nothing, Nothing}(Ok(nothing)), 1) === nothing
     @test unwrap_or(Result{String, Dict}(Err(Dict())), "hello") == "hello"
     @test unwrap_or(Result{Int, Int}(Err(1)), 1 + 1) === 2
+
+    # unwrap_error_or
+    @test unwrap_error_or(Result{Integer, AbstractFloat}(Err(1.1)), 1.2) === 1.1
+    @test unwrap_error_or(Result{UInt8, UInt8}(Err(0x00)), Dict()) === 0x00
+    @test unwrap_error_or(Result{Dict, String}(Ok(Dict())), missing) === missing
+    @test unwrap_error_or(Result{Int, UInt}(Ok(55)), UInt(1)) === UInt(1)
     
     # expect
     @test expect(Result{Nothing, Int}(Ok(nothing)), "foo") === nothing
@@ -58,17 +65,17 @@ using Test
     @test_throws ErrorException expect(Result{Int, UInt}(Err(UInt(11))), "bar")
     @test_throws ErrorException expect(Result{Bool, Bool}(Err(true)), "foo")
 
-    # unwrap_err
-    @test unwrap_err(Result{String, UInt}(Err(UInt(19)))) == UInt(19)
-    @test unwrap_err(Result{AbstractDict, String}(Err("bar"))) == "bar"
-    @test_throws ErrorException unwrap_err(Result{Int, Int}(Ok(1)))
-    @test_throws ErrorException unwrap_err(Result{String, Int}(Ok("bar")))
+    # unwrap_error
+    @test unwrap_error(Result{String, UInt}(Err(UInt(19)))) == UInt(19)
+    @test unwrap_error(Result{AbstractDict, String}(Err("bar"))) == "bar"
+    @test_throws ErrorException unwrap_error(Result{Int, Int}(Ok(1)))
+    @test_throws ErrorException unwrap_error(Result{String, Int}(Ok("bar")))
 
     # expect_err
-    @test expect_err(Result{Vector, AbstractString}(Err("x")), "foo") == "x"
-    @test expect_err(Result{Int, UInt8}(Err(0xa4)), "mistake!") == 0xa4
-    @test_throws ErrorException expect_err(Result{Int, UInt8}(Ok(15)), "foobar")
-    @test_throws ErrorException expect_err(Result{Vector, AbstractString}(Ok([])), "xx")
+    @test expect_error(Result{Vector, AbstractString}(Err("x")), "foo") == "x"
+    @test expect_error(Result{Int, UInt8}(Err(0xa4)), "mistake!") == 0xa4
+    @test_throws ErrorException expect_error(Result{Int, UInt8}(Ok(15)), "foobar")
+    @test_throws ErrorException expect_error(Result{Vector, AbstractString}(Ok([])), "xx")
     
     # and_then
     @test and_then(x -> x + 1, Float64, Result{Float64, String}(Ok(5.0))) === Result{Float64, String}(Ok(6.0))
@@ -170,6 +177,7 @@ end
 end
 
 @testset "@unwrap_or" begin
+    # @unwrap_or
     not_zero(x::Int)::Option{Int} = iszero(x) ? none : some(1 + x)
 
     function my_sum(f, it)
@@ -191,6 +199,11 @@ end
     @test my_sum(not_zero_two, [1,2,0,2,0,1]) === 3.0
 
     @test_throws TypeError @unwrap_or (1 + 1) "foo"
+
+    # @unwrap_error_or
+    @test (@unwrap_error_or none(Integer) missing) === nothing
+    @test (@unwrap_error_or some(55) missing) === missing
+    @test (@unwrap_error_or Result{UInt8, String}(Err("Someerr")) missing) == "Someerr"
 end
 
 # I only have this to get 100% code coverage and make sure printing doesn't error
