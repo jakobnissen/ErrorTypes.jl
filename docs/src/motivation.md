@@ -1,7 +1,7 @@
 # Why use ErrorTypes?
 In short, ErrorTypes improves the _safety_ of your error-handling code by reducing the opportunities for _human error_.
 
-Some people think the source of programming bug are programs who misbehave by not computing what they are supposed to. This is false. Bugs arise from _human_ failure. We humans fail to understand the programs we write. We forget the edge cases We create leaky abstractions. We don't document thoroughly.
+Some people think the source of programming bug are programs who misbehave by not computing what they are supposed to. This is false. Bugs arise from _human_ failure. We humans fail to understand the programs we write. We forget the edge cases. We create leaky abstractions. We don't document thoroughly.
 
 If we want better programs, it is pointless to wait around for better humans to arrive. We can't excuse the existence of bugs with the existence human fallibility, because we will never get rid of that. Instead, we must design systems to contain and mitigate human error. Programming languages are such systems.
 
