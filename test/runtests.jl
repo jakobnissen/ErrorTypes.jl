@@ -82,6 +82,12 @@ using Test
     @test and_then(x -> abs(x) % UInt8, UInt8, Result{Int, Dict}(Ok(-55))) === Result{UInt8, Dict}(Ok(UInt8(55)))
     @test and_then(x -> x + 1, Bool, Result{String, Int}(Err(1))) === Result{Bool, Int}(Err(1))
     @test and_then(x -> "foo", Dict, Result{Int, Int}(Err(1))) === Result{Dict, Int}(Err(1))
+
+    # map_or
+    @test map_or(x -> x + 1, Result{Float64, String}(Ok(3.0)), 3.0) === 4.0
+    @test map_or(x -> x + 1, Result{Float64, String}(Err("foo")), 3.0) === 3.0
+    @test map_or(x -> 0, Result{Int, Int}(Ok(5)), 1) === 0
+    @test map_or(x -> 0, Result{Int, Int}(Err(19)), 1) === 1
 end
 
 @testset "Option" begin

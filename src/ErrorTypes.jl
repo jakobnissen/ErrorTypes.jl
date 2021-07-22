@@ -225,6 +225,13 @@ function and_then(f, ::Type{T}, x::Result{O, E})::Result{T, E} where {T, O, E}
 end
 
 """
+    map_or(f, x::Result, v)
+
+If `x` is a result value, return `f(unwrap(x))`. Else, return `v`.
+"""
+map_or(f, x::Result{O, E}, v) where {O, E} = f(@unwrap_or x return v)
+
+"""
     unwrap_or(x::Result, v)
 
 If `x` is an error value, return `v`. Else, unwrap `x` and return its content.
@@ -266,7 +273,7 @@ base(x::Option{T}) where T = Some(@unwrap_or x (return nothing))
 export Ok, Err, Result, Option,
     is_error, some, none,
     unwrap, unwrap_error, expect, expect_error,
-    and_then, unwrap_or, unwrap_error_or, flatten, base,
+    and_then, unwrap_or, map_or, unwrap_error_or, flatten, base,
     @?, @unwrap_or, @unwrap_error_or
 
 end

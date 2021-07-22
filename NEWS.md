@@ -1,3 +1,8 @@
+## Release 0.5.1
+
+__New features__
+* New function `map_or(f, x::Result, v)`. Returns `f(unwrap(x))` if x is a result value, else `v`
+
 ## Release 0.5.0
 
 __Breaking changes__
