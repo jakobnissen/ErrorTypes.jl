@@ -1,10 +1,10 @@
 # Usage
 
 ### The Result type
-Fundamentally, we have the two types `Ok{T}` and `Err{E}`, each just being wrapper types of a `T` or `E`, respectively. These represent a successful value of type `T` or an error of type `E`. For example, a function returning either a string or a 32-bit integer error code could return a `Result{String, Int32}`.
+Fundamentally, we have `Result{T, E}`. This type _contains_ either a successful value of type `T` or an error of type `E`.
+For example, a function returning either a string or a 32-bit integer error code could return a `Result{String, Int32}`.
 
-`Ok` and `Err` are not supposed to be instantiated directly (and indeed, cannot be easily instantiated). Instead, they only exist as fields of a `Result{T, E}` type, which contains a field typed `Union{Ok{T}, Err{E}}`. You can construct it like this:
-
+You can construct it like this:
 ```
 julia> Result{String, Int}(Ok("Nothing went wrong"))
 Result{String, Int64}(Ok("Nothing went wrong"))
@@ -31,7 +31,10 @@ Option{Integer}(some(1))
 ```
 
 #### ResultConstructor
-Behind the scenes, calling `Err(x)` or `Ok(x)` creates an instance of the non-exported type `ResultConstructor`.
+Internally, `Result{T, E}` contains a field typed `Union{Ok{T}, Err{E}}.`
+The types `Ok` and `Err` are not supposed to be instantiated directly (and indeed, cannot be easily instantiated).
+
+Calling `Ok(x)` or `Err(x)` instead creates an instance of the non-exported type `ResultConstructor`:
 
 ```
 julia> Err(1)
@@ -41,7 +44,8 @@ julia> Ok(1)
 ErrorTypes.ResultConstructor{Int64, Ok}(1)
 ```
 
-The only purpose of `ResultConstructor` is to create `Result`s with the correct parameters, and to allow conversions of carefully selected types. The user does not need to think much about `ResultConstructor`, but if `ErrorTypes` is abused, this type can show up in the stacktraces.
+The only purpose of `ResultConstructor` is to more easily create `Result`s with the correct parameters, and to allow conversions of carefully selected types, read on to learn how.
+The user does not need to think much about `ResultConstructor`, but if `ErrorTypes` is abused, this type can show up in the stacktraces.
 
 `none` by itself is a constant for `ErrorTypes.ResultConstructor{Nothing, Err}(nothing)` - we will come back to why this is particularly convenient.
 
@@ -58,7 +62,11 @@ And not this:
 invert(x::Integer) = iszero(x) ? none(Float64) : some(1/x)
 ```
 
-Note in the first example that `none` can be returned, which was a generic instance of `ResultConstructor`. One purpose of `ResultConstructor` is that annotating the return type will cause this generic `none` to automatically convert to `Option{Float64}`. Similarly, one can also use a typeassert to ease in the construction of `Result`:
+When annotating a function with a return type `T`, the return value gets converted at the end with an explicit `convert(T, return_value)`.
+
+In the function in this example, the function can return `none`, which was a generic instance of `ResultConstructor`.
+When that happens, `none` is automatically converted to the correct value, in this case `none(Float64)`.
+Similarly, one can also use a typeassert to ease in the construction of `Result` return type:
 
 ```
 function get_length(x)::Result{Int, Base.IteratorSize}
@@ -71,7 +79,10 @@ function get_length(x)::Result{Int, Base.IteratorSize}
 end
 ```
 
-In this example, `Ok(Int(length(x))` returns a `ResultConstructor{Int, Ok}`, which can be converted to the target `Result{Int, Base.IteratorSize}`. Similarly, the `Err(isz)` creates a `ResultConstructor{Base.IteratorSize, Err}`, which can likewise be converted.
+In the above example example, `Ok(Int(length(x))` returns a `ResultConstructor{Int, Ok}`, which can be converted to the target `Result{Int, Base.IteratorSize}`.
+Similarly, the `Err(isz)` creates a `ResultConstructor{Base.IteratorSize, Err}`, which can likewise be converted.
+
+In most cases therefore, you never have to constuct an `Option` or `Result` directly. Instead, use a typeassert and return `some(x)` or `none` to return an `Option`, and return `Ok(x)` or `Err(x)` to return a `Result`.
 
 ### Conversion rules
 Error types can only convert to each other in certain circumstances. This is intentional, because type conversion is a major source of mistakes.
@@ -80,9 +91,13 @@ Error types can only convert to each other in certain circumstances. This is int
 * A `ResultConstructor{T, Ok}` can be converted to `Result{T2, E}` if `T <: T2`.
 * A `ResultConstructor{E, Err}` can be converted to `Result{T, E2}` if `E <: E2`.
 
-The first rule merely state that a `Result` can be converted to another `Result` if both the success parameter (`Ok{T}`) and the error parameter (`Err{E}`) error types are a supertype. It is intentionally NOT possible to e.g. convert a `Result{Int, String}` containing an `Ok` to a `Result{Int, Int}`, even if the `Ok` value contains an `Int` which is allowed in both of the `Result` types. The reason for this is that if it was allowed, whether or not conversions threw errors would depend on the _value_ of an error type, not the type. This type-unstable behaviour would defeat idea behind this package, namely to present edge cases as types, not values.
+The first rule merely state that a `Result` can be converted to another `Result` if both the success parameter (`Ok{T}`) and the error parameter (`Err{E}`) error types are a supertype.
+It is intentionally NOT possible to e.g. convert a `Result{Int, String}` containing an `Ok` to a `Result{Int, Int}`, even if the `Ok` value contains an `Int` which is allowed in both of the `Result` types.
+The reason for this is that if it was allowed, whether or not conversions threw errors would depend on the _value_ of an error type, not the type.
+This type-unstable behaviour would defeat idea behind this package, namely to present edge cases as types, not values.
 
 The next two rules state that `ResultConstructors` have relaxed this requirement, and so a `ResultConstructors` constructed from an `Ok` or `Err` can be converted if only the `Ok{T}` or the `Err{E}` parameter, respectively, is a supertype, not necessarily both parameters.
+This is what enables use of `Ok(x)`, `Err(x)` and `none` as return values when the function is annotated with return type.
 
 There is one last type, `ResultConstructor{T, Union{}}`, which is even more flexible in how it converts. This is created by the `@?` macro, discussed next.
 
@@ -94,7 +109,11 @@ julia> @? Result{String, Int}(Ok("foo"))
 "foo"
 ```
 
-However, if `x` evaluates to an error value `Err{E}`, the macro creates a `ResultConstructor{E, Union{}}`, let's call it `y`, and evaluates to `return y`. In this manner, the macro means "unwrap the value if possible, and else immediately return it to the outer function". `ResultConstructor{E, Union{}}` are even more flexible in what they can be converted to: They can convert to any `Option` type, or any `Result{T, E2}` where `E <: E2`. This allows you to propagate errors from functions returning `Result` to those returning `Option`.
+However, if `x` evaluates to an error value `Err{E}`, the macro creates a `ResultConstructor{E, Union{}}`, let's call it `y`, and evaluates to `return y`.
+In this manner, the macro means "unwrap the value if possible, and else immediately return it to the outer function".
+`ResultConstructor{E, Union{}}` are even more flexible in what they can be converted to:
+They can convert to any `Option` type, or any `Result{T, E2}` where `E <: E2`.
+This allows you to propagate errors from functions returning `Result` to those returning `Option`.
 
 Let's see it in action. Suppose you want to implement a safe version of the harmonic mean function, which in turn uses a safe version of `div`:
 
@@ -125,6 +144,8 @@ function harmonic_mean(v::AbstractArray{<:Integer})::Option{Float64}
     some(@? safe_div(length(v), sm))
 end
 ```
+
+In case any of the calls to `safe_div` yields a `none(Float64)`, the `@?` macro evaluates to code equivalent to `return ResultConstructor{Nothing, Union{}}(nothing)`. This value is then converted by the typeassert in the outer function to `none(Float64)`
 
 ### When to use an error type vs throw an error
 The error handling mechanism provided by ErrorTypes is a distinct method from throwing and catching errors. None is superior to the other in all circumstances.

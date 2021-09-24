@@ -17,7 +17,7 @@ function second_csv_field(s::Union{String, SubString{String}})::Option{SubString
     p = nothing
     for i in 1:ncodeunits(s)
         if codeunit(s, i) == UInt8(',')
-            isnothing(p) || return some(SubString(s, p, i-1)) 
+            isnothing(p) || return some(SubString(s, p, prevind(s, i))) 
             p = i + 1
         end
     end
@@ -44,7 +44,9 @@ You can of course mix and match regular exceptions and error types. That is usef
 ```julia
 function first_field(io::IO)::Option{String}
     lines = eachline(io)
-    @assert startswith(first(iterate(lines)), "#Name\t")
+    if! startswith(first(iterate(lines)), "#Name\t")
+        error("In file, expected header to begin with: \"#Name\\t\"")
+    end
     nextit = iterate(lines)
     isnothing(nextit) && return none
     line = first(nextit)
