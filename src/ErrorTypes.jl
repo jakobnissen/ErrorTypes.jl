@@ -79,6 +79,18 @@ Alias for `Result{T, Nothing}`
 """
 const Option{T} = Result{T, Nothing}
 
+"""
+	is_error(x::Result)
+
+Check if `x` contains an error value.
+
+# Example
+
+```jldoctest
+julia> is_error(none(Int)), is_error(some(5))
+(true, false)
+```
+"""
 is_error(x::Result) = x.x isa Err
 
 Option(x::Result{T, E}) where {T, E} = is_error(x) ? none(T) : Option{T}(x.x)
