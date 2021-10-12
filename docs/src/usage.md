@@ -124,11 +124,11 @@ function harmonic_mean(v::AbstractArray{<:Integer})::Option{Float64}
     sm = 0.0
     for i in v
         invi = safe_div(1, i)
-        is_none(invi) && return none
+        is_error(invi) && return none
         sm += unwrap(invi)
     end
     res = safe_div(length(v), sm)
-    is_none(res) && return none
+    is_error(res) && return none
     return some(unwrap(res))
 end
 ```
