@@ -153,6 +153,15 @@ macro unwrap_t_or(expr, T, exec)
     end
 end
 
+macro unwrap_t_or_else(expr, T, exec)
+    return quote
+        local res = $(esc(expr))
+        isa(res, Result) || throw(TypeError(Symbol("@unwrap_or"), Result, res))
+        local data = res.x
+        data isa $(esc(T)) ? data.x : $(esc(exec))(data.x)
+    end
+end
+
 # Note: jldoctests crashes on this ATM, even if it works correctly.
 """
     @unwrap_or(expr, exec)
@@ -182,12 +191,44 @@ macro unwrap_or(expr, exec)
 end
 
 """
+    @unwrap_or_else(expr, exec)
+Evaluate `expr` to a `Result`. If `expr` is a error value, evaluate
+`exec(expr)` and return that. Else, return the wrapped ok value in `expr`
+# Examples
+```
+julia> safe_sqrt(x)::Result{Float64,Complex{Float64}} = x < zero(x) ? Err(sqrt(-x) * 1im) : Ok(sqrt(x));
+
+julia> function sum_abs(it)
+    sum = 0.0
+    for i in it
+        sum += @unwrap_or_else safe_sqrt(i) abs
+    end
+    sum
+end;
+
+julia> sum_abs([-4,-1,0,1,4])
+6.0
+```
+"""
+macro unwrap_or_else(expr, exec)
+    :(@unwrap_t_or_else $(esc(expr)) Ok $(esc(exec)))
+end
+
+"""
     @unwrap_error_or(expr, exec)
 
 Same as `@unwrap_or`, but unwraps errors.
 """
 macro unwrap_error_or(expr, exec)
     return :(@unwrap_t_or $(esc(expr)) Err $(esc(exec)))
+end
+
+"""
+    @unwrap_error_or(expr, exec)
+Same as `@unwrap_or_else`, but unwraps errors.
+"""
+macro unwrap_error_or_else(expr, exec)
+    return :(@unwrap_t_or_else $(esc(expr)) Err $(esc(exec)))
 end
 
 @noinline throw_unwrap_err() = error("unwrap on unexpected type")
@@ -250,6 +291,11 @@ If `x` is an error value, return `v`. Else, unwrap `x` and return its content.
 """
 unwrap_or(x::Result, v) = @unwrap_or x v
 
+"""
+    unwrap_or_else(x::Result, f)
+If `x` is an error value, return `f(unwrap_error(x))`. Else, unwrap `x` and return its content.
+"""
+unwrap_or_else(x::Result, f) = @unwrap_or_else x f
 
 """
     unwrap_error_or(x::Result, v)
@@ -257,6 +303,12 @@ unwrap_or(x::Result, v) = @unwrap_or x v
 Like `unwrap_or`, but unwraps an error.
 """
 unwrap_error_or(x::Result, v) = @unwrap_error_or x v
+
+"""
+    unwrap_error_or(x::Result, v)
+Like `unwrap_or_else`, but unwraps an error.
+"""
+unwrap_error_or_else(x::Result, f) = @unwrap_error_or_else x f
 
 """
     flatten(x::Option{Option{T}})
@@ -285,7 +337,7 @@ base(x::Option{T}) where T = Some(@unwrap_or x (return nothing))
 export Ok, Err, Result, Option,
     is_error, some, none,
     unwrap, unwrap_error, expect, expect_error,
-    and_then, unwrap_or, map_or, unwrap_error_or, flatten, base,
-    @?, @unwrap_or, @unwrap_error_or
+    and_then, unwrap_or, unwrap_or_else, map_or, unwrap_error_or, unwrap_error_or_else,
+    flatten, base, @?, @unwrap_or, @unwrap_or_else, @unwrap_error_or, @unwrap_error_or_else
 
 end

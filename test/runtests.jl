@@ -53,11 +53,23 @@ using Test
     @test unwrap_or(Result{String, Dict}(Err(Dict())), "hello") == "hello"
     @test unwrap_or(Result{Int, Int}(Err(1)), 1 + 1) === 2
 
+    # unwrap_or_else
+    @test unwrap_or_else(Result{Int, Float64}(Ok(5)), (_) -> 11) === 5
+    @test unwrap_or_else(Result{Nothing, Nothing}(Ok(nothing)), (_) -> 1) === nothing
+    @test unwrap_or_else(Result{String, Dict}(Err(Dict("a" => "b"))), d -> d["a"]) == "b"
+    @test unwrap_or_else(Result{Int, Int}(Err(1)), x -> x + 1) === 2
+
     # unwrap_error_or
     @test unwrap_error_or(Result{Integer, AbstractFloat}(Err(1.1)), 1.2) === 1.1
     @test unwrap_error_or(Result{UInt8, UInt8}(Err(0x00)), Dict()) === 0x00
     @test unwrap_error_or(Result{Dict, String}(Ok(Dict())), missing) === missing
     @test unwrap_error_or(Result{Int, UInt}(Ok(55)), UInt(1)) === UInt(1)
+
+    # unwrap_error_or_else
+    @test unwrap_error_or_else(Result{Integer, AbstractFloat}(Err(1.1)), (_) -> 1.2) === 1.1
+    @test unwrap_error_or_else(Result{UInt8, UInt8}(Err(0x00)), (_) -> Dict()) === 0x00
+    @test unwrap_error_or_else(Result{Dict, String}(Ok(Dict())), d -> length(keys(d))) === 0
+    @test unwrap_error_or_else(Result{Int, UInt}(Ok(55)), (i) -> UInt(i)) === UInt(55)
     
     # expect
     @test expect(Result{Nothing, Int}(Ok(nothing)), "foo") === nothing
