@@ -12,7 +12,7 @@ appropriate `Result type`.
 """
 struct Ok{T}
     x::T
-    Ok{T}(::Unsafe, x::T) where T = new{T}(x)
+    Ok{T}(::Unsafe, x::T) where {T} = new{T}(x)
 end
 
 """
@@ -24,7 +24,7 @@ appropriate `Result type`.
 """
 struct Err{E}
     x::E
-    Err{E}(::Unsafe, x::E) where E = new{E}(x)
+    Err{E}(::Unsafe, x::E) where {E} = new{E}(x)
 end
 
 struct ResultConstructor{T, K <: Union{Ok, Err}}
@@ -33,8 +33,8 @@ end
 
 Ok{T}(x::T2) where {T, T2 <: T} = ResultConstructor{T, Ok}(convert(T, x))
 Err{T}(x::T2) where {T, T2 <: T} = ResultConstructor{T, Err}(convert(T, x))
-Ok(x::T) where T = Ok{T}(x)
-Err(x::T) where T = Err{T}(x)
+Ok(x::T) where {T} = Ok{T}(x)
+Err(x::T) where {T} = Err{T}(x)
 
 """
     Result{O, E}
@@ -52,7 +52,7 @@ function Result{T1, E1}(x::Result{T2, E2}) where {T1, T2 <: T1, E1, E2 <: E1}
 end
 
 function Base.convert(::Type{Result{T1, E1}}, x::Result{T2, E2}) where {T1, T2 <: T1, E1, E2 <: E1}
-    Result{T1, E1}(x)
+    return Result{T1, E1}(x)
 end
 
 # Bizarrely, we need this method to avoid recursion when creating a Result
@@ -69,7 +69,7 @@ Result{O, Nothing}(x::ResultConstructor{E, Union{}}) where {O, E} = Result{O, No
 Base.convert(::Type{T}, x::ResultConstructor) where {T <: Result} = T(x)
 
 function Base.show(io::IO, x::Result)
-    print(io, typeof(x), '(', Base.typename(typeof(x.x)).name, '(', repr(x.x.x), "))")
+    return print(io, typeof(x), '(', Base.typename(typeof(x.x)).name, '(', repr(x.x.x), "))")
 end
 
 """
@@ -99,14 +99,14 @@ function Result(x::Option{T}, v::E) where {T, E}
     return Result{T, E}(data isa Err ? Err(v) : x.x)
 end
 
-some(x::T) where T = Option{T}(Ok{T}(unsafe, x))
+some(x::T) where {T} = Option{T}(Ok{T}(unsafe, x))
 
 const none = ResultConstructor{Nothing, Err}(nothing)
-none(x::Type{T}) where T = Option{T}(Err{Nothing}(unsafe, nothing))
+none(x::Type{T}) where {T} = Option{T}(Err{Nothing}(unsafe, nothing))
 
-function Base.show(io::IO, x::Option{T}) where T
+function Base.show(io::IO, x::Option{T}) where {T}
     inner = x.x
-    if inner isa Err
+    return if inner isa Err
         print(io, "none(", T, ')')
     else
         # If the inner value is exactly T, elide printing it for brevity.
@@ -136,7 +136,7 @@ julia> f(some(1.0)), f(none(Int))
 ```
 """
 macro var"?"(expr)
-    quote
+    return quote
         local res = $(esc(expr))
         isa(res, Result) || throw(TypeError(Symbol("@?"), Result, res))
         local data = res.x
@@ -145,7 +145,7 @@ macro var"?"(expr)
 end
 
 macro unwrap_t_or(expr, T, exec)
-    quote
+    return quote
         local res = $(esc(expr))
         isa(res, Result) || throw(TypeError(Symbol("@unwrap_or"), Result, res))
         local data = res.x
@@ -211,7 +211,7 @@ julia> sum_abs([-4,-1,0,1,4])
 ```
 """
 macro unwrap_or_else(expr, exec)
-    :(@unwrap_t_or_else $(esc(expr)) Ok $(esc(exec)))
+    return :(@unwrap_t_or_else $(esc(expr)) Ok $(esc(exec)))
 end
 
 """
@@ -274,7 +274,7 @@ If `f(unwrap(x))` is not a `T`, this functions throws an error.
 """
 function and_then(f, ::Type{T}, x::Result{O, E})::Result{T, E} where {T, O, E}
     data = x.x
-    Result{T, E}(data isa Ok ? Ok(f(data.x)) : Err(data.x))
+    return Result{T, E}(data isa Ok ? Ok(f(data.x)) : Err(data.x))
 end
 
 """
@@ -325,14 +325,14 @@ julia> flatten(some(none(Int)))
 none(Int)
 ```
 """
-flatten(x::Option{Option{T}}) where T = unwrap_or(x, none(T))
+flatten(x::Option{Option{T}}) where {T} = unwrap_or(x, none(T))
 
 """
     base(x::Option{T})
 
 Convert an `Option{T}` to a `Union{Some{T}, Nothing}`.
 """
-base(x::Option{T}) where T = Some(@unwrap_or x (return nothing))
+base(x::Option{T}) where {T} = Some(@unwrap_or x (return nothing))
 
 export Ok, Err, Result, Option,
     is_error, some, none,

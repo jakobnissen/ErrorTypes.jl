@@ -3,12 +3,12 @@ using Test
 
 @testset "Result" begin
     # instantiation
-    @test Result{Bool, String}(Ok(true)) isa Result{Bool,String}
-    @test Result{Bool, String}(Ok(false)) isa Result{Bool,String}
+    @test Result{Bool, String}(Ok(true)) isa Result{Bool, String}
+    @test Result{Bool, String}(Ok(false)) isa Result{Bool, String}
     @test Result{Int, Int}(Err(15)) isa Result{Int, Int}
     @test_throws MethodError Err{Int}(1.0)
     @test_throws MethodError Ok{Bool}(5)
-    
+
     # conversion
     @test convert(Result{String, Int}, Ok("foo")) isa Result{String, Int}
     @test convert(Result{String, Int}, Ok("foo")).x isa Ok{String}
@@ -33,17 +33,17 @@ using Test
     @test_throws MethodError convert(Result{Int, String}, Ok("foo"))
     @test_throws MethodError convert(Result{Int, Int}, Err("foo"))
     @test_throws MethodError convert(Result{String, Int}, Err("foo"))
-    @test_throws MethodError convert(Result{Int, String}, Ok([1,2,3]))
-    
+    @test_throws MethodError convert(Result{Int, String}, Ok([1, 2, 3]))
+
     # is_error
     @test is_error(convert(Result{Int, Bool}, Err(false)))
-    @test is_error(Result{String, AbstractArray}(Err([1,2])))
+    @test is_error(Result{String, AbstractArray}(Err([1, 2])))
     @test !is_error(convert(Result{Bool, AbstractFloat}, Ok(true)))
     @test !is_error(Result{Int, Dict}(Ok(11)))
-    
+
     # unwrap
     @test unwrap(Result{Int, String}(Ok(9))) === 9
-    @test unwrap(convert(Result{Dict, Dict}, Ok(Dict(1=>5)))) == Dict(1=>5)
+    @test unwrap(convert(Result{Dict, Dict}, Ok(Dict(1 => 5)))) == Dict(1 => 5)
     @test_throws ErrorException unwrap(Result{Int, String}(Err("foo")))
     @test_throws ErrorException unwrap(Result{Bool, Bool}(Err(true)))
 
@@ -70,10 +70,10 @@ using Test
     @test unwrap_error_or_else(Result{UInt8, UInt8}(Err(0x00)), (_) -> Dict()) === 0x00
     @test unwrap_error_or_else(Result{Dict, String}(Ok(Dict())), d -> length(keys(d))) === 0
     @test unwrap_error_or_else(Result{Int, UInt}(Ok(55)), (i) -> UInt(i)) === UInt(55)
-    
+
     # expect
     @test expect(Result{Nothing, Int}(Ok(nothing)), "foo") === nothing
-    @test expect(convert(Result{Int,Int}, Ok(17)), " ") === 17
+    @test expect(convert(Result{Int, Int}, Ok(17)), " ") === 17
     @test_throws ErrorException expect(Result{Int, UInt}(Err(UInt(11))), "bar")
     @test_throws ErrorException expect(Result{Bool, Bool}(Err(true)), "foo")
 
@@ -88,7 +88,7 @@ using Test
     @test expect_error(Result{Int, UInt8}(Err(0xa4)), "mistake!") == 0xa4
     @test_throws ErrorException expect_error(Result{Int, UInt8}(Ok(15)), "foobar")
     @test_throws ErrorException expect_error(Result{Vector, AbstractString}(Ok([])), "xx")
-    
+
     # and_then
     @test and_then(x -> x + 1, Float64, Result{Float64, String}(Ok(5.0))) === Result{Float64, String}(Ok(6.0))
     @test and_then(x -> abs(x) % UInt8, UInt8, Result{Int, Dict}(Ok(-55))) === Result{UInt8, Dict}(Ok(UInt8(55)))
@@ -135,7 +135,7 @@ end
     @test base(some(11)) == Some(11)
     @test base(none(AbstractString)) === nothing
     @test base(some(some(0xf1))) == Some(some(0xf1))
-    @test_throws MethodError base(Result{String, Vector}(Err([1,2])))
+    @test_throws MethodError base(Result{String, Vector}(Err([1, 2])))
     @test_throws MethodError base(Result{Int, Int}(Ok(1)))
 end
 
@@ -206,7 +206,7 @@ end
         sum
     end
 
-    @test my_sum(not_zero, [1,2,0,3,0,1]) == 11
+    @test my_sum(not_zero, [1, 2, 0, 3, 0, 1]) == 11
 
     function not_zero_two(x::Int)::Result{Float64, String}
         iszero(x) && return Err("Zero")
@@ -214,7 +214,7 @@ end
         Ok(1 / x)
     end
 
-    @test my_sum(not_zero_two, [1,2,0,2,0,1]) === 3.0
+    @test my_sum(not_zero_two, [1, 2, 0, 2, 0, 1]) === 3.0
 
     @test_throws TypeError @unwrap_or (1 + 1) "foo"
 
@@ -237,5 +237,3 @@ end
     @test test_printing(none(AbstractString)) > 5
     @test test_printing(some(1)) < test_printing(Option{Integer}(some(1)))
 end
-        
-
