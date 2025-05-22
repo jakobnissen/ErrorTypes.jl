@@ -41,6 +41,13 @@ using Test
     @test !is_error(convert(Result{Bool, AbstractFloat}, Ok(true)))
     @test !is_error(Result{Int, Dict}(Ok(11)))
 
+    # ok
+    @test ok(Result{String, Int}(Err(-1))) === none(String)
+    @test ok(Result{Int64, Int32}(Err(Int32(0)))) === none(Int64)
+    @test ok(Result{String, Int}(Ok("Success!"))) === some("Success!")
+    @test ok(none(Int)) === none(Int)
+    @test ok(some('ø')) === some('ø')
+
     # unwrap
     @test unwrap(Result{Int, String}(Ok(9))) === 9
     @test unwrap(convert(Result{Dict, Dict}, Ok(Dict(1 => 5)))) == Dict(1 => 5)
