@@ -242,6 +242,8 @@ end
 Evaluate `expr` to a `Result`. If `expr` is a error value, evaluate
 `exec` and return that. Else, return the wrapped value in `expr`.
 
+See also: [`@unwrap_error_or`](@ref)
+
 # Examples
 ```julia
 julia> safe_inv(x)::Option{Float64} = iszero(x) ? none : Ok(1/x);
@@ -265,7 +267,11 @@ end
 """
     @unwrap_error_or(expr, exec)
 
-Same as `@unwrap_or`, but unwraps errors.
+Evaluate `expr` to a `Result`. If `expr` is a result value, evaluate
+`exec` and return that. Else, return the wrapped error value in `expr`.
+
+See also: [`@unwrap_or`](@ref)
+```
 """
 macro unwrap_error_or(expr, exec)
     return :(@unwrap_t_or $(esc(expr)) Err $(esc(exec)))
@@ -434,13 +440,13 @@ See also: [`unwrap_error_or_else`](@ref), [`unwrap_or`](@ref)
 
 # Examples
 ```jldoctest
-julia> unwrap_or_else(some(3), isnothing)
+julia> unwrap_or_else(isnothing, some(3))
 3
 
-julia> unwrap_or_else(none(Int), println)
+julia> unwrap_or_else(println, none(Int))
 nothing
 
-julia> unwrap_or_else(Result{Int, String}(Err("my_error")), ncodeunits)
+julia> unwrap_or_else(ncodeunits, Result{Int, String}(Err("my_error")))
 8
 ```
 """
@@ -479,13 +485,13 @@ See also: [`@unwrap_error_or`](@ref), [`unwrap_or_else`](@ref)
 
 # Examples
 ```jldoctest
-julia> unwrap_error_or_else(some("abc"), ncodeunits)
+julia> unwrap_error_or_else(ncodeunits, some("abc"))
 3
 
-julia> unwrap_error_or_else(none(String), ncodeunits) === nothing
+julia> unwrap_error_or_else(ncodeunits, none(String)) === nothing
 true
 
-julia> unwrap_error_or_else(Result{Int, String}(Err("abc")), n -> n + 1)
+julia> unwrap_error_or_else(n -> n + 1, Result{Int, String}(Err("abc")))
 "abc"
 ```
 """
