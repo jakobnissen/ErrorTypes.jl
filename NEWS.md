@@ -1,5 +1,16 @@
-## Release 0.5.1
+## Release 0.5.2
+__New features__
+* New functions `unwrap_or_else(f, x::Result)` and `unwrap_error_or_else`.
+  The former is equivalent to (but more efficient than)
+  `is_error(x) ? f(unwrap_error(x)) : unwrap(x)`. The latter is the mirror image.
+* New function `ok(::Result)::Option` constructs an `Option` from a `Result`,
+  discarding the error value by turning an error value into a `none`.
+* New function `is_ok_and(f, x::Result)` is equivalent to, but more efficient
+  than `!is_error(x) && f(unwrap(x))`.
+* New function `iter(x::Option)` return an iterator which is empty if `x` is
+  none, and contains only the result value otherwise.
 
+## Release 0.5.1
 __New features__
 * New function `map_or(f, x::Result, v)`. Returns `f(unwrap(x))` if x is a result value, else `v`
 
