@@ -54,10 +54,10 @@ using Test
     @test unwrap_or(Result{Int, Int}(Err(1)), 1 + 1) === 2
 
     # unwrap_or_else
-    @test unwrap_or_else(Result{Int, Float64}(Ok(5)), (_) -> 11) === 5
-    @test unwrap_or_else(Result{Nothing, Nothing}(Ok(nothing)), (_) -> 1) === nothing
-    @test unwrap_or_else(Result{String, Dict}(Err(Dict("a" => "b"))), d -> d["a"]) == "b"
-    @test unwrap_or_else(Result{Int, Int}(Err(1)), x -> x + 1) === 2
+    @test unwrap_or_else(_ -> 11, Result{Int, Float64}(Ok(5))) === 5
+    @test unwrap_or_else(_ -> 1, Result{Nothing, Nothing}(Ok(nothing))) === nothing
+    @test unwrap_or_else(d -> d["a"], Result{String, Dict}(Err(Dict("a" => "b")))) == "b"
+    @test unwrap_or_else(x -> x + 1, Result{Int, Int}(Err(1))) === 2
 
     # unwrap_error_or
     @test unwrap_error_or(Result{Integer, AbstractFloat}(Err(1.1)), 1.2) === 1.1
@@ -66,10 +66,10 @@ using Test
     @test unwrap_error_or(Result{Int, UInt}(Ok(55)), UInt(1)) === UInt(1)
 
     # unwrap_error_or_else
-    @test unwrap_error_or_else(Result{Integer, AbstractFloat}(Err(1.1)), (_) -> 1.2) === 1.1
-    @test unwrap_error_or_else(Result{UInt8, UInt8}(Err(0x00)), (_) -> Dict()) === 0x00
-    @test unwrap_error_or_else(Result{Dict, String}(Ok(Dict())), d -> length(keys(d))) === 0
-    @test unwrap_error_or_else(Result{Int, UInt}(Ok(55)), (i) -> UInt(i)) === UInt(55)
+    @test unwrap_error_or_else(_ -> 1.2, Result{Integer, AbstractFloat}(Err(1.1))) === 1.1
+    @test unwrap_error_or_else(Dict, Result{UInt8, UInt8}(Err(0x00))) === 0x00
+    @test unwrap_error_or_else(d -> length(keys(d)), Result{Dict, String}(Ok(Dict()))) === 0
+    @test unwrap_error_or_else(UInt, Result{Int, UInt}(Ok(55))) === UInt(55)
 
     # expect
     @test expect(Result{Nothing, Int}(Ok(nothing)), "foo") === nothing
