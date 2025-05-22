@@ -209,8 +209,7 @@ Propagate a `Result` with `Err` value to the outer function.
 Evaluate `expr`, which should return a `Result`. If it contains an `Ok` value `x`,
 evaluate to the unwrapped value `x`. Else, evaluates to `return Err(x)`.
 
-# Example
-
+# Examples
 ```jldoctest
 julia> (f(x::Option{T})::Option{T}) where T = Ok(@?(x) + one(T));
 
@@ -279,6 +278,21 @@ end
 
 If `x` is of the associated error type, throw an error. Else, return the contained
 result type.
+
+See also: [`unwrap_error`](@ref), [`@unwrap_or`](@ref)
+
+# Examples
+```jldoctest
+julia> unwrap(some(Any[]))
+Any[]
+
+julia> unwrap(none(Int))
+ERROR: unwrap on unexpected type
+[...]
+
+julia> unwrap(Result{String, Int32}(Ok("Lin Wei")))
+"Lin Wei"
+```
 """
 unwrap(x::Result) = @unwrap_or x throw_unwrap_err()
 
@@ -286,6 +300,21 @@ unwrap(x::Result) = @unwrap_or x throw_unwrap_err()
     unwrap_error(x::Result)
 
 If `x` contains an `Err`, return the content of the `Err`. Else, throw an error.
+
+See also: [`unwrap`](@ref), [`expect_error`](@ref)
+
+# Examples
+```jldoctest
+julia> unwrap_error(some(3))
+ERROR: unwrap on unexpected type
+[...]
+
+julia> unwrap_error(none(String)) === nothing
+true
+
+julia> unwrap_error(Result{Int, String}(Err("some error")))
+"some error"
+```
 """
 unwrap_error(x::Result) = @unwrap_error_or x throw_unwrap_err()
 
@@ -294,6 +323,17 @@ unwrap_error(x::Result) = @unwrap_error_or x throw_unwrap_err()
 
 If `x` is of the associated error type, error with message `s`. Else, return
 the contained result type.
+
+See also: [`expect_error`](@ref), [`unwrap`](@ref)
+
+# Examples
+```jldoctest
+julia> expect(some('x'), "cannot be none") === 'x'
+true
+
+julia> expect(Result{Int, String}(Ok(19)), "Expected an integer")
+19
+```
 """
 expect(x::Result, s::AbstractString) = @unwrap_or x error(s)
 
@@ -304,6 +344,19 @@ If `x` contains an `Err`, return the content of the `Err`. Else, throw an error
 with message `s`.
 
 See also: [`unwrap_error`](@ref), [`expect`](@ref)
+
+# Examples
+```jldoctest
+julia> expect_error(none(Int), "expected none") === nothing
+true
+
+julia> expect_error(Result{Vector, String}(Err("Mistake!")), "must be error")
+"Mistake!"
+
+julia> expect_error(some(3), "must be none")
+ERROR: must be none
+[...]
+```
 """
 expect_error(x::Result, s::AbstractString) = @unwrap_error_or x error(s)
 
