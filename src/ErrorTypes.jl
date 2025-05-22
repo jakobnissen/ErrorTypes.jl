@@ -86,7 +86,7 @@ Result{O, E}(x::ResultConstructor{O2, Ok}) where {O, E, O2 <: O} = Result{O, E}(
 Result{O, E}(x::ResultConstructor{E2, <:Err}) where {O, E, E2 <: E} = Result{O, E}(Err{E}(unsafe, x.x))
 
 # ResultConstructor propagated with @? can convert to any Option
-Result{O, Nothing}(x::ResultConstructor{E, Union{}}) where {O, E} = Result{O, Nothing}(Err{Nothing}(unsafe, nothing))
+Result{O, Nothing}(::ResultConstructor{E, Union{}}) where {O, E} = Result{O, Nothing}(Err{Nothing}(unsafe, nothing))
 Base.convert(::Type{T}, x::ResultConstructor) where {T <: Result} = T(x)
 
 function Base.show(io::IO, x::Result)
@@ -224,6 +224,29 @@ macro var"?"(expr)
         local data = res.x
         data isa Ok ? data.x : return ResultConstructor{typeof(data.x), Union{}}(data.x)
     end
+end
+
+"""
+    ok(x::Result{T})::Option{T}
+
+Construct an `Option` from a `Result`, such that the `Ok` variant becomes a `some`,
+and the `Err` variant becomes a `none(T)`, discarding the error value if present.
+
+# Examples
+```jldoctest
+julia> ok(Result{Int, String}(Err("Some error message")))
+none(Int)
+
+julia> ok(Result{String, Dict}(Ok("Success!")))
+some("Success!")
+
+julia> ok(some(5))
+some(5)
+```
+"""
+function ok(x::Result{T, E}) where {T, E}
+    y = x.x
+    return y isa Ok ? some(y.x) : none(T)
 end
 
 macro unwrap_t_or(expr, T, exec)
@@ -536,10 +559,28 @@ Some(1)
 """
 base(x::Option{T}) where {T} = Some(@unwrap_or x (return nothing))
 
-export Ok, Err, Result, Option,
-    is_error, some, none,
-    unwrap, unwrap_error, expect, expect_error,
-    and_then, unwrap_or, unwrap_or_else, map_or, unwrap_error_or, unwrap_error_or_else,
-    flatten, base, @?, @unwrap_or, @unwrap_error_or
+export Ok,
+    Err,
+    Result,
+    Option,
+    is_error,
+    some,
+    none,
+    ok,
+    unwrap,
+    unwrap_error,
+    expect,
+    expect_error,
+    and_then,
+    unwrap_or,
+    unwrap_or_else,
+    map_or,
+    unwrap_error_or,
+    unwrap_error_or_else,
+    flatten,
+    base,
+    @?,
+    @unwrap_or,
+    @unwrap_error_or
 
 end
