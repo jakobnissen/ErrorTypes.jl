@@ -13,10 +13,10 @@ makedocs(;
         "Usage" => "usage.md",
         "Why use ErrorTypes?" => "motivation.md",
     ],
-    repo = "https://github.com/jakobnissen/ErrorTypes.jl/blob/{commit}{path}#L{line}",
     sitename = "ErrorTypes.jl",
     authors = "Jakob Nybo Nissen",
-    assets = String[],
+    checkdocs = :exports,
+    doctest = true,
 )
 
 deploydocs(;
