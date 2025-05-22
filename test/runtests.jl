@@ -41,6 +41,16 @@ using Test
     @test !is_error(convert(Result{Bool, AbstractFloat}, Ok(true)))
     @test !is_error(Result{Int, Dict}(Ok(11)))
 
+    # is_ok_and
+    @test !is_ok_and(isempty, none(String))
+    @test !is_ok_and(isempty, some("abc"))
+    @test is_ok_and(isempty, some(""))
+    @test is_ok_and(i -> i < 1, some(-1))
+    @test !is_ok_and(i -> i < 1, none(String))
+
+    @test_throws TypeError is_ok_and(i -> i + 1, some(1))
+    @test_throws TypeError is_ok_and(ncodeunits, Result{String, String}(Ok("abc")))
+
     # ok
     @test ok(Result{String, Int}(Err(-1))) === none(String)
     @test ok(Result{Int64, Int32}(Err(Int32(0)))) === none(Int64)
