@@ -302,16 +302,28 @@ expect(x::Result, s::AbstractString) = @unwrap_or x error(s)
 
 If `x` contains an `Err`, return the content of the `Err`. Else, throw an error
 with message `s`.
+
+See also: [`unwrap_error`](@ref), [`expect`](@ref)
 """
 expect_error(x::Result, s::AbstractString) = @unwrap_error_or x error(s)
 
 """
-    and_then(f, ::Type{T}, x::Result{O, E})
+    and_then(f, ::Type{T}, x::Result{O, E})::Result{T, E}
 
-If `is` a result value, apply `f` to `unwrap(x)`, else return the error value. Always returns a `Result{T, E}`.
+If `is` a result value, return `Result{T, E}(Ok(f(unwrap(x))))`,
+else return the error value. Always returns a `Result{T, E}`.
 
 __WARNING__
 If `f(unwrap(x))` is not a `T`, this functions throws an error.
+
+# Examples
+```jldoctest
+julia> and_then(join, String, some(["ab", "cd"]))
+some("abcd")
+
+julia> and_then(i -> Int32(ncodeunits(join(i))), Int32, none(Vector{String}))
+none(Int32)
+```
 """
 function and_then(f, ::Type{T}, x::Result{O, E})::Result{T, E} where {T, O, E}
     data = x.x
@@ -322,6 +334,20 @@ end
     map_or(f, x::Result, v)
 
 If `x` is a result value, return `f(unwrap(x))`. Else, return `v`.
+
+See also: [`unwrap_or`](@ref), [`and_then`](@ref)
+
+# Examples
+```jldoctest
+julia> map_or(isodd, some(9), nothing)
+true
+
+julia> map_or(isodd, none(Int), nothing) === nothing
+true
+
+julia> map_or(ncodeunits, none(String), 0)
+0
+```
 """
 map_or(f, x::Result{O, E}, v) where {O, E} = f(@unwrap_or x return v)
 
@@ -329,12 +355,41 @@ map_or(f, x::Result{O, E}, v) where {O, E} = f(@unwrap_or x return v)
     unwrap_or(x::Result, v)
 
 If `x` is an error value, return `v`. Else, unwrap `x` and return its content.
+
+See also: [`unwrap`](@ref), [`@unwrap_or`](@ref)
+
+# Examples:
+```jldoctest
+julia> unwrap_or(some(5), 9)
+5
+
+julia> unwrap_or(none(Float32), "something else")
+"something else"
+
+julia> unwrap_or(Result{Int8, Vector}(Err([])), 0x01)
+0x01
+```
 """
 unwrap_or(x::Result, v) = @unwrap_or x v
 
 """
     unwrap_or_else(f, x::Result)
+
 If `x` is an error value, return `f(unwrap_error(x))`. Else, unwrap `x` and return its content.
+
+See also: [`unwrap_error_or_else`](@ref), [`unwrap_or`](@ref)
+
+# Examples
+```jldoctest
+julia> unwrap_or_else(some(3), isnothing)
+3
+
+julia> unwrap_or_else(none(Int), println)
+nothing
+
+julia> unwrap_or_else(Result{Int, String}(Err("my_error")), ncodeunits)
+8
+```
 """
 function unwrap_or_else(f, x::Result)
     y = x.x
@@ -345,12 +400,41 @@ end
     unwrap_error_or(x::Result, v)
 
 Like `unwrap_or`, but unwraps an error.
+
+See also: [`unwrap_or`](@ref)
+
+# Examples
+```jldoctest
+julia> unwrap_error_or(Result{Int, String}(Err("abc")), 19)
+"abc"
+
+julia> unwrap_error_or(none(String), "error") === nothing
+true
+
+julia> unwrap_error_or(some([1, 2, 3]), Int32[])
+Int32[]
+```
 """
 unwrap_error_or(x::Result, v) = @unwrap_error_or x v
 
 """
-    unwrap_error_or(f, x::Result)
-Like `unwrap_or_else`, but unwraps an error.
+    unwrap_error_or(f, x::Result
+
+Returns the wrapped error value if `x` is an error, else return `f(unwrap(x))`.
+    
+See also: [`@unwrap_error_or`](@ref), [`unwrap_or_else`](@ref)
+
+# Examples
+```jldoctest
+julia> unwrap_error_or_else(some("abc"), ncodeunits)
+3
+
+julia> unwrap_error_or_else(none(String), ncodeunits) === nothing
+true
+
+julia> unwrap_error_or_else(Result{Int, String}(Err("abc")), n -> n + 1)
+"abc"
+```
 """
 function unwrap_error_or_else(f, x::Result)
     y = x.x
@@ -363,7 +447,6 @@ end
 Convert an `Option{Option{T}}` to an `Option{T}`.
 
 # Examples
-
 ```jldoctest
 julia> flatten(some(some("x")))
 some("x")
@@ -385,7 +468,8 @@ See also: [`Option`](@ref)
 ```jldoctest
 julia> sub_nonneg(x::Int)::Option{Int} = x < 1 ? none : some(x - 1);
 
-julia> base(sub_nonneg(-3))
+julia> base(sub_nonneg(-3)) === nothing
+true
 
 julia> base(sub_nonneg(2))
 Some(1)
