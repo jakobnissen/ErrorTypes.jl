@@ -234,8 +234,8 @@ and the `Err` variant becomes a `none(T)`, discarding the error value if present
 
 # Examples
 ```jldoctest
-julia> ok(Result{Int, String}(Err("Some error message")))
-none(Int)
+julia> ok(Result{Int32, String}(Err("Some error message")))
+none(Int32)
 
 julia> ok(Result{String, Dict}(Ok("Success!")))
 some("Success!")
