@@ -151,18 +151,19 @@ end
     # iter
     y = iter(some('w'))
     @test length(y) == 1
-    @test only(y) == 'w'
+    @test first(y) == 'w'
     @test collect(y) == ['w']
 
     y = iter(none(String))
     @test length(y) == 0
     @test isempty(y)
-    @test_throws ArgumentError only(y)
+    @test_throws ArgumentError first(y)
     @test collect(y) == String[]
 
     y = some(some(3.0))
-    @test only(iter(y)) === some(3.0)
-    @test only(iter(flatten(y))) === 3.0
+    @test first(iter(y)) === some(3.0)
+    @test collect(iter(y)) == [some(3.0)]
+    @test first(iter(flatten(y))) === 3.0
 
     y = iter(some(3.0))
     (w, s) = iterate(y)

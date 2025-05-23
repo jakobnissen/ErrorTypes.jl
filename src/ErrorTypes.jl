@@ -597,7 +597,7 @@ or an empty iterator if it is none.
 
 # Examples
 ```
-julia> only(iter(some(19)))
+julia> first(iter(some(19)))
 19
 
 julia> collect(iter(some("some string")))
