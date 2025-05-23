@@ -256,7 +256,7 @@ Check if `x` is a result value, and `f(unwrap(x))`.
 `f(unwrap(x))` must return a `Bool`.
 
 # Examples
-```
+```jldoctest
 julia> is_ok_and(isodd, none(Int))
 false
 
@@ -596,7 +596,7 @@ Produce an iterator over `x`, which yields the result value of `x` if `x` is som
 or an empty iterator if it is none.
 
 # Examples
-```
+```jldoctest
 julia> first(iter(some(19)))
 19
 
