@@ -153,14 +153,21 @@ end
     @test length(y) == 1
     @test only(y) == 'w'
     @test collect(y) == ['w']
+
     y = iter(none(String))
     @test length(y) == 0
     @test isempty(y)
     @test_throws ArgumentError only(y)
     @test collect(y) == String[]
+
     y = some(some(3.0))
     @test only(iter(y)) === some(3.0)
     @test only(iter(flatten(y))) === 3.0
+
+    y = some(3.0)
+    (w, s) = iterate(y)
+    @test w === 3.0
+    @test iterate(y, s) === nothing
 
     @test_throws MethodError iter(Result{String, Int}(Err(1)))
     @test_throws MethodError iter(Result{Int, UInt}(Ok(1)))
