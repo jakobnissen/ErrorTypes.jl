@@ -1,3 +1,10 @@
+```@meta
+CurrentModule = ErrorTypes
+DocTestSetup = quote
+    using ErrorTypes
+end
+```
+
 # Usage
 
 ### The Result type
@@ -5,7 +12,7 @@ Fundamentally, we have `Result{T, E}`. This type _contains_ either a successful 
 For example, a function returning either a string or a 32-bit integer error code could return a `Result{String, Int32}`.
 
 You can construct it like this:
-```
+```jldoctest
 julia> Result{String, Int}(Ok("Nothing went wrong"))
 Result{String, Int64}(Ok("Nothing went wrong"))
 ```
@@ -15,7 +22,7 @@ Thus, a `Result{T, E}` represents _either_ a successful creation of a `T` or an 
 #### Option
 `Option{T}` is an alias for `Result{T, Nothing}`, and is easier to work with fully specifying the parameters of `Result`s. `Option` is useful when the error state do not need to store any information besides the fact than an error occurred. `Option`s can be conventiently created with two helper functions `some` and `none`:
 
-```
+```jldoctest
 julia> some(1) === Result{typeof(1), Nothing}(Ok(1))
 true
 
@@ -25,7 +32,7 @@ true
 
 If you want an abstractly parameterized `Option`, you can construct it directly like this:
 
-```
+```jldoctest
 julia> Option{Integer}(some(1))
 Option{Integer}(some(1))
 ```
@@ -36,7 +43,7 @@ The types `Ok` and `Err` are not supposed to be instantiated directly (and indee
 
 Calling `Ok(x)` or `Err(x)` instead creates an instance of the non-exported type `ResultConstructor`:
 
-```
+```jldoctest
 julia> Err(1)
 ErrorTypes.ResultConstructor{Int64, Err}(1)
 
@@ -53,12 +60,12 @@ The user does not need to think much about `ResultConstructor`, but if `ErrorTyp
 Always typeassert any function that returns an error type. The whole point of ErrorTypes is to encode error states in return types, and be specific about these error states. While ErrorTypes will _technically_ work fine without function annotations, it makes everything easier, and I highly recommend annotating return types:
 
 Do this:
-```
+```julia
 invert(x::Integer)::Option{Float64} = iszero(x) ? none : some(1/x)
 ```
 
 And not this:
-```
+```julia
 invert(x::Integer) = iszero(x) ? none(Float64) : some(1/x)
 ```
 
@@ -68,7 +75,7 @@ In the function in this example, the function can return `none`, which was a gen
 When that happens, `none` is automatically converted to the correct value, in this case `none(Float64)`.
 Similarly, one can also use a typeassert to ease in the construction of `Result` return type:
 
-```
+```julia
 function get_length(x)::Result{Int, Base.IteratorSize}
     isz = Base.IteratorSize(x)
     if isa(isz, Base.HasShape) || isa(isz, Base.HasLength)
