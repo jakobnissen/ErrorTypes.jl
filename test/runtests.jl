@@ -148,6 +148,23 @@ end
     @test_throws MethodError flatten(some(Result{Int, UInt}(Err(UInt(1)))))
     @test_throws MethodError flatten(Result{Option{Int}, Missing}(Ok(some(5))))
 
+    # iter
+    y = iter(some('w'))
+    @test length(y) == 1
+    @test only(y) == 'w'
+    @test collect(y) == ['w']
+    y = iter(none(String))
+    @test length(y) == 0
+    @test isempty(y)
+    @test_throws ArgumentError only(y)
+    @test collect(y) == String[]
+    y = some(some(3.0))
+    @test only(iter(y)) === some(3.0)
+    @test only(iter(flatten(y))) === 3.0
+
+    @test_throws MethodError iter(Result{String, Int}(Err(1)))
+    @test_throws MethodError iter(Result{Int, UInt}(Ok(1)))
+
     # base
     @test base(some(11)) == Some(11)
     @test base(none(AbstractString)) === nothing

@@ -589,6 +589,44 @@ Some(1)
 """
 base(x::Option{T}) where {T} = Some(@unwrap_or x (return nothing))
 
+"""
+    iter(x::Option)::OptionIterator
+
+Produce an iterator over `x`, which yields the result value of `x` if `x` is some,
+or an empty iterator if it is none.
+
+# Examples
+```
+julia> only(iter(some(19)))
+19
+
+julia> collect(iter(some("some string")))
+1-element Vector{String}:
+ "some string"
+
+julia> isempty(iter(none(Dict)))
+true
+
+julia> collect(iter(none(Char)))
+Char[]
+```
+"""
+iter(x::Option) = OptionIterator(x)
+
+struct OptionIterator{T}
+    x::Option{T}
+end
+
+Base.eltype(::Type{OptionIterator{T}}) where {T} = T
+Base.length(x::OptionIterator) = Int(!is_error(x.x))
+
+function Base.iterate(x::OptionIterator)
+    content = @unwrap_or x.x return nothing
+    return (content, nothing)
+end
+
+Base.iterate(::OptionIterator, ::Nothing) = nothing
+
 export Ok,
     Err,
     Result,
@@ -609,6 +647,7 @@ export Ok,
     unwrap_error_or,
     unwrap_error_or_else,
     flatten,
+    iter,
     base,
     @?,
     @unwrap_or,
