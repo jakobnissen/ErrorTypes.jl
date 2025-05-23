@@ -39,13 +39,50 @@ The error state of a `Result{O, E}`, carrying an object of type `E`.
 For convenience, `Err(x)` creates a dummy value that can be converted to the
 appropriate `Result type`.
 
-See also: [`Ok`](@ref)
+For a more detailed description, see: [`Ok`](@ref)
 """
 struct Err{E}
     x::E
     Err{E}(::Unsafe, x::E) where {E} = new{E}(x)
 end
 
+"""
+    Err(x::T)::ResultConstructor{T, Err}
+    Ok(x::T)::ResultConstrutor{T, Ok}
+    none::ResultConstructor{Nothing, Err}
+    (@? x::Result{T,E}(Err{E}))::ResultConstructor{T, Union{}}
+
+Instances of `ResultConstructor` are temporary values, which are constructed
+only to be immediately `convert`ed to `Result`.
+Proper use of `ErrorTypes.jl` should not result in `ResultConstructors` leaking
+out of functions.
+
+The constructors `Ok` and `Err` return `ResultConstructor`, and the constant
+`none` is the `ResultConstructor` for `Option`.
+
+Typical use of `ResultConstructor` is to construct it immediately before
+returning it. If the function's return type is annotated to `Result`, the value
+will be `converted`.
+
+# Examples:
+```jldoctest
+julia> sat_sub(x::UInt8)::Result{UInt8, String} = iszero(x) ? Err("Overflow") : Ok(x - 0x01);
+
+julia> sat_sub(0x00)
+Result{UInt8, String}(Err("Overflow"))
+
+julia> sat_sub(0x01)
+Result{UInt8, String}(Ok(0x00))
+
+julia> sat_sub(x::UInt8)::Option{UInt8} = iszero(x) ? none : Ok(x - 0x01);
+
+julia> sat_sub(0x00)
+none(UInt8)
+
+julia> sat_sub(0x01)
+some(0x00)
+```
+"""
 struct ResultConstructor{T, K <: Union{Ok, Err}}
     x::T
 end
@@ -61,10 +98,37 @@ Err(x::T) where {T} = Err{T}(x)
 A sum type of either `Ok{O}` or `Err{E}`. Used as return value of functions that
 can error with an informative error object of type `E`.
 
+Results are normally constructed implicitly, through `convert`ing
+`ResultConstructor` using `Ok` or `Err`, such as in:
+
+```jldoctest
+julia> x::Result{Int, String} = Err("Oh my!");
+
+julia> x
+Result{Int64, String}(Err("Oh my!"))
+```
+
 See also: [`Option`](@ref), [`Ok`](@ref), [`Err`](@ref)
+
+# Examples
+```jldoctest
+julia> Result{UInt8, UInt32}(Ok(0x03)) # manual constructor
+Result{UInt8, UInt32}(Ok(0x03))
+
+julia> make_err()::Result{Vector{Int}, String} = Err("error!");
+
+julia> make_err()
+Result{Vector{Int64}, String}(Err("error!"))
+
+julia> is_error(make_err())
+true
+```
 """
 struct Result{O, E}
     x::Union{Ok{O}, Err{E}}
+
+    # Suppress the unparameterized constuctor
+    Result{O, E}(x::Union{Ok{O}, Err{E}}) where {O, E} = new{O, E}(x)
 end
 
 function Result{T1, E1}(x::Result{T2, E2}) where {T1, T2 <: T1, E1, E2 <: E1}
@@ -206,6 +270,7 @@ end
     @?(expr)
 
 Propagate a `Result` with `Err` value to the outer function.
+
 Evaluate `expr`, which should return a `Result`. If it contains an `Ok` value `x`,
 evaluate to the unwrapped value `x`. Else, evaluates to `return Err(x)`.
 
