@@ -164,10 +164,12 @@ end
     @test only(iter(y)) === some(3.0)
     @test only(iter(flatten(y))) === 3.0
 
-    y = some(3.0)
+    y = iter(some(3.0))
     (w, s) = iterate(y)
     @test w === 3.0
     @test iterate(y, s) === nothing
+
+    @test_throws MethodError iterate(some(3))
 
     @test_throws MethodError iter(Result{String, Int}(Err(1)))
     @test_throws MethodError iter(Result{Int, UInt}(Ok(1)))
