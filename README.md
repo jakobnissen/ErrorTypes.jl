@@ -44,7 +44,7 @@ You can of course mix and match regular exceptions and error types. That is usef
 ```julia
 function first_field(io::IO)::Option{String}
     lines = eachline(io)
-    if! startswith(first(iterate(lines)), "#Name\t")
+    if !startswith(first(iterate(lines)), "#Name\t")
         error("In file, expected header to begin with: \"#Name\\t\"")
     end
     nextit = iterate(lines)
